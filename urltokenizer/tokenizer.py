@@ -4,12 +4,11 @@ from typing import Any
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.core.exceptions import ValidationError, ImproperlyConfigured
 from django.core.mail import send_mail
 from django.utils.encoding import force_bytes, force_str, DjangoUnicodeDecodeError
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.translation import gettext_lazy as _
-
-from rest_framework.exceptions import ValidationError
 
 
 class TokenGenerator(PasswordResetTokenGenerator):
@@ -53,7 +52,7 @@ class Tokenizer:
     def __init__(self, token_type: str | Enum):
         SETTINGS = getattr(settings, "URLTOKENIZER_SETTINGS", None)
         if not SETTINGS:
-            raise ValidationError(
+            raise ImproperlyConfigured(
                 _("URLTOKENIZER_SETTINGS must be defined in settings.py")
             )
 
