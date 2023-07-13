@@ -36,11 +36,16 @@ class CheckTokenSerializer(serializers.Serializer):
         token_type = self.context["view"].kwargs["type"]
         tokenizer = Tokenizer(token_type)
 
-        if not tokenizer.check_token(
-            validated_data["uidb64"],
-            validated_data["token"],
-            **validated_data.get("extra_data", {})
-        ):
+        try:
+            user = tokenizer.check_token(
+                validated_data["uidb64"],
+                validated_data["token"],
+                **validated_data.get("extra_data", {})
+            )
+        except Exception as e:
+            raise serializers.ValidationError from e
+
+        if not user:
             raise AuthenticationFailed(_("invalid token"))
 
         return validated_data
