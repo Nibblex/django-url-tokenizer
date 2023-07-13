@@ -6,7 +6,7 @@ from .tokenizer import Tokenizer
 class URLTokenizerMixin:
     @property
     def _uidb64(self) -> str:
-        return Tokenizer.encode(getattr(self, self.ENCODING_FIELD))
+        return Tokenizer.encode(getattr(self, self.ENCODING_FIELD, "pk"))
 
     def generate_tokenized_link(
         self, token_type: str | Enum, domain: str = None, send_email: bool = False
