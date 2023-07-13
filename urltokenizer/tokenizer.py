@@ -51,10 +51,10 @@ class TokenGenerator(PasswordResetTokenGenerator):
 
 class Tokenizer:
     def __init__(self, token_type: str | Enum):
-        SETTINGS = getattr(settings, "TOKENIZATION_SETTINGS", None)
+        SETTINGS = getattr(settings, "URLTOKENIZER_SETTINGS", None)
         if not SETTINGS:
             raise ValidationError(
-                _("TOKENIZATION_SETTINGS must be defined in settings.py")
+                _("URLTOKENIZER_SETTINGS must be defined in settings.py")
             )
 
         self.token_type = (
