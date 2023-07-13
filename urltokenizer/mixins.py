@@ -3,7 +3,7 @@ from enum import Enum
 from .tokenizer import Tokenizer
 
 
-class TokenizationMixin:
+class URLTokenizerMixin:
     @property
     def _uidb64(self) -> str:
         return Tokenizer.encode(getattr(self, self.ENCODING_FIELD))
