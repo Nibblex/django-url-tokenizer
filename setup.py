@@ -5,8 +5,8 @@ import setuptools
 os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 
 setuptools.setup(
-    name="urltokenizer",
-    version="0.0.1",
+    name="django-url-tokenizer",
+    version="0.0.2",
     author="Sergio Rodríguez",
     author_email="srodriguez3441@gmail.com",
     description="""A python package that provides a Django app that allows you to
@@ -21,6 +21,6 @@ setuptools.setup(
     ],
     install_requires=[
         "Django>=1.11",
-        "rest_framework>=3.13.1",
+        "djangorestframework>=3.13.1",
     ],
 )
