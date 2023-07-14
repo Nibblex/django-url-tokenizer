@@ -4,13 +4,11 @@ from typing import Any
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
-from django.core.exceptions import ImproperlyConfigured
+from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.core.mail import send_mail
 from django.utils.encoding import force_bytes, force_str, DjangoUnicodeDecodeError
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.translation import gettext_lazy as _
-
-from rest_framework.exceptions import ValidationError
 
 
 class TokenGenerator(PasswordResetTokenGenerator):
@@ -26,7 +24,7 @@ class TokenGenerator(PasswordResetTokenGenerator):
         return f"{user.pk}{timestamp}{attributes}"
 
     def check_token(self, user, token):
-        preconditions = self.token_config["preconditions"].items()
+        preconditions = self.token_config.get("preconditions", {}).items()
         all(getattr(user, attribute) == value for attribute, value in preconditions)
         return super().check_token(user, token)
 
