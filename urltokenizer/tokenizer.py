@@ -75,6 +75,9 @@ class Tokenizer:
     @staticmethod
     def _get_token_generator(token_type: str, SETTINGS: dict) -> TokenGenerator:
         token_config = SETTINGS.get("TOKEN_CONFIG", {}).get(token_type, {})
+        if not token_config and SETTINGS.get("VALIDATE_TOKEN_TYPE", True):
+            raise ValidationError(_(f"invalid token type: {token_type}"))
+
         return TokenGenerator(token_config)
 
     @property
