@@ -34,8 +34,10 @@ class TokenGenerator(PasswordResetTokenGenerator):
 
     def check_token(self, user, token):
         preconditions = self.preconditions.items()
-        all(getattr(user, attribute) == value for attribute, value in preconditions)
-        return super().check_token(user, token)
+        valid_preconditions = all(
+            getattr(user, attribute) == value for attribute, value in preconditions
+        )
+        return valid_preconditions and super().check_token(user, token)
 
     def run_callbacks(self, user, **kwargs):
         for callback in self.callbacks:
