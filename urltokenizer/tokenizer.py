@@ -26,8 +26,8 @@ class TokenGenerator(PasswordResetTokenGenerator):
         return f"{user.pk}{timestamp}{attributes}"
 
     def check_token(self, user, token):
-        permissions = self.token_config["permissions"].items()
-        all(getattr(user, attribute) == value for attribute, value in permissions)
+        preconditions = self.token_config["preconditions"].items()
+        all(getattr(user, attribute) == value for attribute, value in preconditions)
         return super().check_token(user, token)
 
     def run_callbacks(self, user, **kwargs):
@@ -77,9 +77,46 @@ class Tokenizer:
     def user_model(self):
         return get_user_model()
 
+    # url config
+
+    @property
+    def protocol(self) -> str:
+        return self.token_config.get("protocol", self._settings.get("PROTOCOL", "http"))
+
+    @property
+    def port(self) -> str:
+        return self.token_config.get("port", self._settings.get("PORT", "80"))
+
+    @property
+    def domain(self) -> str:
+        return self.token_config.get(
+            "domain", self._settings.get("DOMAIN", "localhost")
+        )
+
+    # mailing
+
+    @property
+    def email_enabled(self) -> bool:
+        return self.token_config.get(
+            "email_enabled", self._settings.get("EMAIL_ENABLED", False)
+        )
+
+    @property
+    def email_subject(self) -> str:
+        return self.token_config.get(
+            "email_subject",
+            self._settings.get(
+                "EMAIL_SUBJECT", "link generated with django-url-tokenizer"
+            ),
+        )
+
+    # encoding
+
     @property
     def encoding_field(self) -> str:
-        return self.user_model.ENCODING_FIELD
+        return self.token_config.get(
+            "encoding_field", self._settings.get("ENCODING_FIELD", "pk")
+        )
 
     @staticmethod
     def encode(s: Any) -> str:
@@ -89,24 +126,31 @@ class Tokenizer:
     def decode(s: bytes | str) -> str:
         return force_str(urlsafe_base64_decode(s))
 
-    @property
-    def default_domain(self) -> str:
-        return self._settings.get("DEFAULT_DOMAIN", "")
+    # main methods
 
     def generate_tokenized_link(
-        self, user, domain: str = None, send_email: bool = False
+        self,
+        user,
+        domain: str = None,
+        protocol: str = None,
+        port: str = None,
+        send_email: bool = False,
     ) -> tuple[str, str, str, bool]:
-        uidb64 = self.encode(getattr(user, user.ENCODING_FIELD))
+        domain = domain or self.domain
+        protocol = protocol or self.protocol
+        port = port or self.port
+
+        uidb64 = self.encode(getattr(user, self.encoding_field))
         token = self._token_generator.make_token(user)
 
-        domain = domain or self.token_config.get("domain", self.default_domain)
-        link = f"http://www.{domain}/{self.token_type}?uid={uidb64}&key={token}"
+        link = (
+            f"{protocol}://{domain}:{port}/{self.token_type}?uid={uidb64}&key={token}"
+        )
 
         email_sent = 0
-        email_config = self.token_config.get("email", {})
-        if send_email and email_config.get("enabled", False):
+        if send_email and self.email_enabled:
             email_sent = send_mail(
-                subject=email_config.get("subject", ""),
+                subject=self.email_subject,
                 message=link,
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[getattr(user, user.EMAIL_FIELD, None)],
@@ -117,12 +161,12 @@ class Tokenizer:
 
     def check_token(self, uidb64: str, token: str, **kwargs):
         try:
-            encoding_attr = self.decode(uidb64)
+            decoded_attr = self.decode(uidb64)
         except DjangoUnicodeDecodeError:
             return None
 
         user = self.user_model.objects.filter(
-            **{self.encoding_field: encoding_attr}
+            **{self.encoding_field: decoded_attr}
         ).first()
         if not user:
             return None
