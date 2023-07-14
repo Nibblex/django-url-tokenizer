@@ -16,21 +16,29 @@ class TokenGenerator(PasswordResetTokenGenerator):
         self.token_config = token_config
         super().__init__()
 
+    @property
+    def attributes(self):
+        return self.token_config.get("attributes", [])
+
+    @property
+    def preconditions(self):
+        return self.token_config.get("preconditions", {})
+
+    @property
+    def callbacks(self):
+        return self.token_config.get("callbacks", [])
+
     def _make_hash_value(self, user, timestamp):
-        attributes = [
-            getattr(user, attribute)
-            for attribute in self.token_config.get("attributes", [])
-        ]
+        attributes = [getattr(user, attribute) for attribute in self.attributes]
         return f"{user.pk}{timestamp}{attributes}"
 
     def check_token(self, user, token):
-        preconditions = self.token_config.get("preconditions", {}).items()
+        preconditions = self.preconditions.items()
         all(getattr(user, attribute) == value for attribute, value in preconditions)
         return super().check_token(user, token)
 
     def run_callbacks(self, user, **kwargs):
-        callbacks = self.token_config.get("callbacks", [])
-        for callback in callbacks:
+        for callback in self.callbacks:
             method = getattr(user, callback.get("method"), None)
             if method is None:
                 continue
