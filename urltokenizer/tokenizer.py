@@ -110,6 +110,12 @@ class Tokenizer:
         )
 
     @property
+    def email_field(self) -> str:
+        return self.token_config.get(
+            "email_field", self._settings.get("EMAIL_FIELD", "email")
+        )
+
+    @property
     def email_subject(self) -> str:
         return self.token_config.get(
             "email_subject",
@@ -161,7 +167,7 @@ class Tokenizer:
                 subject=self.email_subject,
                 message=link,
                 from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[getattr(user, user.EMAIL_FIELD, None)],
+                recipient_list=[getattr(user, self.email_field)],
                 fail_silently=True,
             )
 
