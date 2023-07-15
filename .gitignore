@@ -4,6 +4,9 @@
 # Virtual environment.
 /venv/
 
+# Environment variables.
+.env
+
 # Compiled python modules.
 *.pyc
 

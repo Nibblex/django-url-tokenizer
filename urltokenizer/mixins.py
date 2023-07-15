@@ -28,7 +28,16 @@ class URLTokenizerMixin:
             self, domain=domain, protocol=protocol, port=port, send_email=send_email
         )
 
-    def check_token(self, token_type: str | Enum, token: str, **kwargs) -> bool:
+    def check_token(
+        self,
+        token_type: str | Enum,
+        token: str,
+        fail_silently: bool | None = None,
+        **kwargs
+    ) -> bool:
         tokenizer = Tokenizer(token_type)
         uidb64 = tokenizer.encode(getattr(self, tokenizer.encoding_field))
-        return tokenizer.check_token(uidb64, token, **kwargs) is not None
+        return (
+            tokenizer.check_token(uidb64, token, fail_silently=fail_silently, **kwargs)
+            is not None
+        )

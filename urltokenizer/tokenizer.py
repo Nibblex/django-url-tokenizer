@@ -127,6 +127,12 @@ class Tokenizer:
             ),
         )
 
+    @property
+    def fail_silently(self) -> bool:
+        return self.token_config.get(
+            "fail_silently", self._settings.get("FAIL_SILENTLY", False)
+        )
+
     # encoding
 
     @property
@@ -176,7 +182,12 @@ class Tokenizer:
 
         return uidb64, token, link, email_sent > 0
 
-    def check_token(self, uidb64: str, token: str, **kwargs):
+    def check_token(
+        self, uidb64: str, token: str, fail_silently: bool | None = None, **kwargs
+    ):
+        if fail_silently is None:
+            fail_silently = self.fail_silently
+
         try:
             decoded_attr = self.decode(uidb64)
         except DjangoUnicodeDecodeError:
@@ -191,6 +202,11 @@ class Tokenizer:
         if not self._token_generator.check_token(user, token):
             return None
 
-        self._token_generator.run_callbacks(user, **kwargs)
+        try:
+            self._token_generator.run_callbacks(user, **kwargs)
+        except ValidationError as e:
+            if not fail_silently:
+                raise e
+            return None
 
         return user
