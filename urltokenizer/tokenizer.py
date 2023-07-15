@@ -3,63 +3,17 @@ from typing import Any
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.core.mail import send_mail
 from django.utils.encoding import force_bytes, force_str, DjangoUnicodeDecodeError
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.translation import gettext_lazy as _
 
-
-class TokenGenerator(PasswordResetTokenGenerator):
-    def __init__(self, token_config):
-        self.token_config = token_config
-        super().__init__()
-
-    @property
-    def attributes(self):
-        return self.token_config.get("attributes", [])
-
-    @property
-    def preconditions(self):
-        return self.token_config.get("preconditions", {})
-
-    @property
-    def callbacks(self):
-        return self.token_config.get("callbacks", [])
-
-    def _make_hash_value(self, user, timestamp):
-        attributes = [getattr(user, attribute) for attribute in self.attributes]
-        return f"{user.pk}{timestamp}{attributes}"
-
-    def check_token(self, user, token):
-        preconditions = self.preconditions.items()
-        valid_preconditions = all(
-            getattr(user, attribute) == value for attribute, value in preconditions
-        )
-        return valid_preconditions and super().check_token(user, token)
-
-    def run_callbacks(self, user, **kwargs):
-        for callback in self.callbacks:
-            method = getattr(user, callback.get("method"), None)
-            if method is None:
-                continue
-
-            kwargs = {
-                key: value
-                for key, value in kwargs.items()
-                if key in callback.get("kwargs", [])
-            }
-            kwargs.update(callback.get("defaults", {}))
-
-            try:
-                method(**kwargs)
-            except Exception as e:
-                raise ValidationError(_("failed to execute callback")) from e
+from .token_generator import TokenGenerator, default_token_generator
 
 
 class Tokenizer:
-    def __init__(self, token_type: str | Enum):
+    def __init__(self, token_type: str | Enum = None):
         SETTINGS = getattr(settings, "URLTOKENIZER_SETTINGS", None)
         if not SETTINGS:
             raise ImproperlyConfigured(
@@ -70,7 +24,11 @@ class Tokenizer:
             token_type.value if isinstance(token_type, Enum) else token_type
         )
         self._settings = SETTINGS
-        self._token_generator = self._get_token_generator(self.token_type, SETTINGS)
+        self._token_generator = (
+            default_token_generator
+            if not self.token_type
+            else self._get_token_generator(self.token_type, SETTINGS)
+        )
 
     @staticmethod
     def _get_token_generator(token_type: str, SETTINGS: dict) -> TokenGenerator:
@@ -78,7 +36,12 @@ class Tokenizer:
         if not token_config and SETTINGS.get("VALIDATE_TOKEN_TYPE", True):
             raise ValidationError(_(f"invalid token type: {token_type}"))
 
-        return TokenGenerator(token_config)
+        return TokenGenerator(
+            attributes=token_config.get("attributes", []),
+            preconditions=token_config.get("preconditions", []),
+            callbacks=token_config.get("callbacks", []),
+            timeout=token_config.get("timeout", 60),
+        )
 
     @property
     def token_config(self) -> dict:
