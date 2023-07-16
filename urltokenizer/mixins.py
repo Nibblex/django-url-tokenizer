@@ -18,8 +18,8 @@ class URLTokenizerMixin:
     def generate_tokenized_link(
         self,
         token_type: str | Enum | None = None,
-        domain: str | None = None,
         path: str | None = None,
+        domain: str | None = None,
         protocol: str | None = None,
         port: str | None = None,
         send_email: bool = False,
@@ -27,8 +27,8 @@ class URLTokenizerMixin:
         tokenizer = Tokenizer(token_type)
         return tokenizer.generate_tokenized_link(
             self,
-            domain=domain,
             path=path,
+            domain=domain,
             protocol=protocol,
             port=port,
             send_email=send_email,

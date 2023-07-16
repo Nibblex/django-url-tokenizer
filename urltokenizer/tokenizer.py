@@ -20,17 +20,10 @@ def _get_or_else(config: dict, key: str, default: Any) -> Any:
 
 class Tokenizer:
     def __init__(self, token_type: str | Enum | None = None):
-        if isinstance(token_type, Enum):
-            token_type = token_type.value.strip().lower()
-        elif isinstance(token_type, str):
-            token_type = token_type.strip().lower()
-        elif token_type is not None:
-            raise ValueError(_("token_type must be either a string or Enum"))
-
+        self.token_type = self._parse(token_type)
         # at this point token_type is either None or a string
-        self.token_type = token_type
 
-        token_config = self._get_token_config(SETTINGS, token_type)
+        token_config = self._get_token_config(SETTINGS, self.token_type)
         self._token_generator = self._get_token_generator(token_config)
 
         # token
@@ -38,8 +31,8 @@ class Tokenizer:
         self.fail_silently = _get_or_else(token_config, "fail_silently", False)
 
         # url
-        self.domain = _get_or_else(token_config, "domain", "localhost")
         self.path = _get_or_else(token_config, "path", "")
+        self.domain = _get_or_else(token_config, "domain", "localhost")
         self.protocol = _get_or_else(token_config, "protocol", "http")
         self.port = _get_or_else(token_config, "port", "80")
 
@@ -49,6 +42,17 @@ class Tokenizer:
         self.email_subject = _get_or_else(
             token_config, "email_subject", "link generated with django-url-tokenizer"
         )
+
+    @staticmethod
+    def _parse(token_type: str | Enum | None) -> str | None:
+        if isinstance(token_type, str):
+            token_type = token_type.strip().lower()
+        elif isinstance(token_type, Enum):
+            token_type = token_type.value.strip().lower()
+        elif token_type is not None:
+            raise ValueError(_("token_type must be either a string or Enum"))
+
+        return token_type
 
     @staticmethod
     def _get_token_config(settings_: dict, token_type: str | None) -> dict:
@@ -101,14 +105,14 @@ class Tokenizer:
     def generate_tokenized_link(
         self,
         user,
-        domain: str | None = None,
         path: str | None = None,
+        domain: str | None = None,
         protocol: str | None = None,
         port: str | None = None,
         send_email: bool = False,
     ) -> tuple[str, str, str, bool]:
-        domain = domain or self.domain
         path = path or self.path
+        domain = domain or self.domain
         protocol = protocol or self.protocol
         port = port or self.port
 
