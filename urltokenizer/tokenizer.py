@@ -61,7 +61,7 @@ class Tokenizer:
         TOKEN_CONFIG = settings_.get("TOKEN_CONFIG", {})
 
         # avoid empty token_type
-        if any(lambda x: x.strip() == "", TOKEN_CONFIG.keys()):
+        if any((x.strip() == "" for x in TOKEN_CONFIG.keys())):
             raise ImproperlyConfigured(
                 _("TOKEN_CONFIG cannot contain blank token_type.")
             )
