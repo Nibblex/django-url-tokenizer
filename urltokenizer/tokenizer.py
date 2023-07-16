@@ -14,7 +14,7 @@ from .token_generator import TokenGenerator
 SETTINGS = getattr(settings, "URLTOKENIZER_SETTINGS", {})
 
 
-def __get_or_else(config: dict, key: str, default: Any) -> Any:
+def _get_or_else(config: dict, key: str, default: Any) -> Any:
     return config.get(key, SETTINGS.get(key.upper(), default))
 
 
@@ -31,25 +31,25 @@ class Tokenizer:
 
         token_config = self._get_token_config(SETTINGS, token_type)
         self._token_generator = TokenGenerator(
-            attributes=__get_or_else(token_config, "attributes", []),
-            preconditions=__get_or_else(token_config, "preconditions", []),
-            callbacks=__get_or_else(token_config, "callbacks", []),
-            timeout=__get_or_else(token_config, "timeout", 60),
+            attributes=_get_or_else(token_config, "attributes", []),
+            preconditions=_get_or_else(token_config, "preconditions", []),
+            callbacks=_get_or_else(token_config, "callbacks", []),
+            timeout=_get_or_else(token_config, "timeout", 60),
         )
 
         # token
-        self.encoding_field = __get_or_else(token_config, "encoding_field", "pk")
-        self.fail_silently = __get_or_else(token_config, "fail_silently", False)
+        self.encoding_field = _get_or_else(token_config, "encoding_field", "pk")
+        self.fail_silently = _get_or_else(token_config, "fail_silently", False)
 
         # url
-        self.protocol = __get_or_else(token_config, "protocol", "http")
-        self.port = __get_or_else(token_config, "port", "80")
-        self.domain = __get_or_else(token_config, "domain", "localhost")
+        self.protocol = _get_or_else(token_config, "protocol", "http")
+        self.port = _get_or_else(token_config, "port", "80")
+        self.domain = _get_or_else(token_config, "domain", "localhost")
 
         # email
-        self.email_enabled = __get_or_else(token_config, "email_enabled", False)
-        self.email_field = __get_or_else(token_config, "email_field", "email")
-        self.email_subject = __get_or_else(
+        self.email_enabled = _get_or_else(token_config, "email_enabled", False)
+        self.email_field = _get_or_else(token_config, "email_field", "email")
+        self.email_subject = _get_or_else(
             token_config, "email_subject", "link generated with django-url-tokenizer"
         )
 
