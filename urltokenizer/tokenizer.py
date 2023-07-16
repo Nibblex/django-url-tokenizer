@@ -20,7 +20,7 @@ def _get_or_else(config: dict, key: str, default: Any) -> Any:
 
 class Tokenizer:
     def __init__(self, token_type: str | Enum | None = None):
-        self.token_type = self._parse(token_type)
+        self.token_type = self._parse_token_type(token_type)
         # at this point token_type is either None or a string
 
         token_config = self._get_token_config(SETTINGS, self.token_type)
@@ -31,7 +31,7 @@ class Tokenizer:
         self.fail_silently = _get_or_else(token_config, "fail_silently", False)
 
         # url
-        self.path = _get_or_else(token_config, "path", "")
+        self.path = _get_or_else(token_config, "path", "").strip("/")
         self.domain = _get_or_else(token_config, "domain", "localhost")
         self.protocol = _get_or_else(token_config, "protocol", "http")
         self.port = _get_or_else(token_config, "port", "80")
@@ -44,7 +44,7 @@ class Tokenizer:
         )
 
     @staticmethod
-    def _parse(token_type: str | Enum | None) -> str | None:
+    def _parse_token_type(token_type: str | Enum | None) -> str | None:
         if isinstance(token_type, str):
             token_type = token_type.strip().lower()
         elif isinstance(token_type, Enum):
