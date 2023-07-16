@@ -11,7 +11,7 @@ from django.utils.translation import gettext_lazy as _
 
 from .token_generator import TokenGenerator
 
-SETTINGS = getattr(settings, "URLTOKENIZER_SETTINGS", {})
+SETTINGS = getattr(settings, "URL_TOKENIZER_SETTINGS", {})
 
 
 def _get_or_else(config: dict, key: str, default: Any) -> Any:
