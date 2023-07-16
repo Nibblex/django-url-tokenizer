@@ -64,6 +64,9 @@ class Tokenizer:
                 _("TOKEN_CONFIG cannot contain blank token_type.")
             )
 
+        if token_type is None:
+            return TOKEN_CONFIG.get("default", {})
+
         token_config = TOKEN_CONFIG.get(token_type, None)
         validate_token_type = settings_.get("VALIDATE_TOKEN_TYPE", True)
 
