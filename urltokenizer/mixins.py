@@ -19,13 +19,19 @@ class URLTokenizerMixin:
         self,
         token_type: str | Enum | None = None,
         domain: str | None = None,
+        path: str | None = None,
         protocol: str | None = None,
         port: str | None = None,
         send_email: bool = False,
     ) -> tuple[str, str, str, bool]:
         tokenizer = Tokenizer(token_type)
         return tokenizer.generate_tokenized_link(
-            self, domain=domain, protocol=protocol, port=port, send_email=send_email
+            self,
+            domain=domain,
+            path=path,
+            protocol=protocol,
+            port=port,
+            send_email=send_email,
         )
 
     def check_token(

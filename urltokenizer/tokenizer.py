@@ -38,9 +38,10 @@ class Tokenizer:
         self.fail_silently = _get_or_else(token_config, "fail_silently", False)
 
         # url
+        self.domain = _get_or_else(token_config, "domain", "localhost")
+        self.path = _get_or_else(token_config, "path", "")
         self.protocol = _get_or_else(token_config, "protocol", "http")
         self.port = _get_or_else(token_config, "port", "80")
-        self.domain = _get_or_else(token_config, "domain", "localhost")
 
         # email
         self.email_enabled = _get_or_else(token_config, "email_enabled", False)
@@ -101,20 +102,20 @@ class Tokenizer:
         self,
         user,
         domain: str | None = None,
+        path: str | None = None,
         protocol: str | None = None,
         port: str | None = None,
         send_email: bool = False,
     ) -> tuple[str, str, str, bool]:
         domain = domain or self.domain
+        path = path or self.path
         protocol = protocol or self.protocol
         port = port or self.port
 
         uidb64 = self.encode(getattr(user, self.encoding_field))
         token = self._token_generator.make_token(user)
 
-        link = (
-            f"{protocol}://{domain}:{port}/{self.token_type}?uid={uidb64}&key={token}"
-        )
+        link = f"{protocol}://{domain}:{port}/{self.path}?uid={uidb64}&key={token}"
 
         email_sent = 0
         if send_email and self.email_enabled:
