@@ -28,14 +28,10 @@ class Tokenizer:
             raise ValueError(_("token_type must be either a string or Enum"))
 
         # at this point token_type is either None or a string
+        self.token_type = token_type
 
         token_config = self._get_token_config(SETTINGS, token_type)
-        self._token_generator = TokenGenerator(
-            attributes=_get_or_else(token_config, "attributes", []),
-            preconditions=_get_or_else(token_config, "preconditions", []),
-            callbacks=_get_or_else(token_config, "callbacks", []),
-            timeout=_get_or_else(token_config, "timeout", 60),
-        )
+        self._token_generator = self._get_token_generator(token_config)
 
         # token
         self.encoding_field = _get_or_else(token_config, "encoding_field", "pk")
@@ -75,6 +71,15 @@ class Tokenizer:
             token_config = TOKEN_CONFIG.get("default", {})
 
         return token_config
+
+    @staticmethod
+    def _get_token_generator(token_config: dict) -> TokenGenerator:
+        return TokenGenerator(
+            attributes=_get_or_else(token_config, "attributes", []),
+            preconditions=_get_or_else(token_config, "preconditions", []),
+            callbacks=_get_or_else(token_config, "callbacks", []),
+            timeout=_get_or_else(token_config, "timeout", 60),
+        )
 
     @property
     def user_model(self):
