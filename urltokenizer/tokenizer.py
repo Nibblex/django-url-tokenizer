@@ -9,100 +9,78 @@ from django.utils.encoding import force_bytes, force_str, DjangoUnicodeDecodeErr
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.translation import gettext_lazy as _
 
-from .token_generator import TokenGenerator, default_token_generator
+from .token_generator import TokenGenerator
+
+SETTINGS = getattr(settings, "URLTOKENIZER_SETTINGS", {})
+
+
+def __get_or_else(config: dict, key: str, default: Any) -> Any:
+    return config.get(key, SETTINGS.get(key.upper(), default))
 
 
 class Tokenizer:
-    def __init__(self, token_type: str | Enum = None):
-        SETTINGS = getattr(settings, "URLTOKENIZER_SETTINGS", None)
-        if not SETTINGS:
-            raise ImproperlyConfigured(
-                _("URLTOKENIZER_SETTINGS must be defined in settings.py")
-            )
+    def __init__(self, token_type: str | Enum | None = None):
+        if isinstance(token_type, Enum):
+            token_type = token_type.value.strip().lower()
+        elif isinstance(token_type, str):
+            token_type = token_type.strip().lower()
+        elif token_type is not None:
+            raise ValueError(_("token_type must be either a string or Enum"))
 
-        self.token_type = (
-            token_type.value if isinstance(token_type, Enum) else token_type
+        # at this point token_type is either None or a string
+
+        token_config = self._get_token_config(SETTINGS, token_type)
+        self._token_generator = TokenGenerator(
+            attributes=__get_or_else(token_config, "attributes", []),
+            preconditions=__get_or_else(token_config, "preconditions", []),
+            callbacks=__get_or_else(token_config, "callbacks", []),
+            timeout=__get_or_else(token_config, "timeout", 60),
         )
-        self._settings = SETTINGS
-        self._token_generator = (
-            default_token_generator
-            if not self.token_type
-            else self._get_token_generator(self.token_type, SETTINGS)
+
+        # token
+        self.encoding_field = __get_or_else(token_config, "encoding_field", "pk")
+        self.fail_silently = __get_or_else(token_config, "fail_silently", False)
+
+        # url
+        self.protocol = __get_or_else(token_config, "protocol", "http")
+        self.port = __get_or_else(token_config, "port", "80")
+        self.domain = __get_or_else(token_config, "domain", "localhost")
+
+        # email
+        self.email_enabled = __get_or_else(token_config, "email_enabled", False)
+        self.email_field = __get_or_else(token_config, "email_field", "email")
+        self.email_subject = __get_or_else(
+            token_config, "email_subject", "link generated with django-url-tokenizer"
         )
 
     @staticmethod
-    def _get_token_generator(token_type: str, SETTINGS: dict) -> TokenGenerator:
-        token_config = SETTINGS.get("TOKEN_CONFIG", {}).get(token_type, {})
-        if not token_config and SETTINGS.get("VALIDATE_TOKEN_TYPE", True):
+    def _get_token_config(settings_: dict, token_type: str | None) -> dict:
+        if token_type is None:
+            return {}
+
+        TOKEN_CONFIG = settings_.get("TOKEN_CONFIG", {})
+
+        # avoid empty token_type
+        if any(lambda x: x.strip() == "", TOKEN_CONFIG.keys()):
+            raise ImproperlyConfigured(
+                _("TOKEN_CONFIG cannot contain blank token_type.")
+            )
+
+        token_config = TOKEN_CONFIG.get(token_type, None)
+        validate_token_type = settings_.get("VALIDATE_TOKEN_TYPE", True)
+
+        if token_config is None and validate_token_type:
             raise ValidationError(_(f"invalid token type: {token_type}"))
+        elif token_config is None and not validate_token_type:
+            token_config = TOKEN_CONFIG.get("default", {})
 
-        return TokenGenerator(
-            attributes=token_config.get("attributes", []),
-            preconditions=token_config.get("preconditions", []),
-            callbacks=token_config.get("callbacks", []),
-            timeout=token_config.get("timeout", 60),
-        )
-
-    @property
-    def token_config(self) -> dict:
-        return self._token_generator.token_config
+        return token_config
 
     @property
     def user_model(self):
         return get_user_model()
 
-    # url config
-
-    @property
-    def protocol(self) -> str:
-        return self.token_config.get("protocol", self._settings.get("PROTOCOL", "http"))
-
-    @property
-    def port(self) -> str:
-        return self.token_config.get("port", self._settings.get("PORT", "80"))
-
-    @property
-    def domain(self) -> str:
-        return self.token_config.get(
-            "domain", self._settings.get("DOMAIN", "localhost")
-        )
-
-    # mailing
-
-    @property
-    def email_enabled(self) -> bool:
-        return self.token_config.get(
-            "email_enabled", self._settings.get("EMAIL_ENABLED", False)
-        )
-
-    @property
-    def email_field(self) -> str:
-        return self.token_config.get(
-            "email_field", self._settings.get("EMAIL_FIELD", "email")
-        )
-
-    @property
-    def email_subject(self) -> str:
-        return self.token_config.get(
-            "email_subject",
-            self._settings.get(
-                "EMAIL_SUBJECT", "link generated with django-url-tokenizer"
-            ),
-        )
-
-    @property
-    def fail_silently(self) -> bool:
-        return self.token_config.get(
-            "fail_silently", self._settings.get("FAIL_SILENTLY", False)
-        )
-
     # encoding
-
-    @property
-    def encoding_field(self) -> str:
-        return self.token_config.get(
-            "encoding_field", self._settings.get("ENCODING_FIELD", "pk")
-        )
 
     @staticmethod
     def encode(s: Any) -> str:
@@ -173,3 +151,6 @@ class Tokenizer:
             return None
 
         return user
+
+
+default_tokenizer = Tokenizer()
