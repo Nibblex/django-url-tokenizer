@@ -64,16 +64,13 @@ class Tokenizer:
                 _("TOKEN_CONFIG cannot contain blank token_type.")
             )
 
-        if token_type is None:
-            return TOKEN_CONFIG.get("default", {})
-
         token_config = TOKEN_CONFIG.get(token_type, None)
         validate_token_type = settings_.get("VALIDATE_TOKEN_TYPE", True)
 
         if token_config is None and validate_token_type:
             raise ValidationError(_(f"invalid token type: {token_type}"))
 
-        return token_config
+        return token_config or TOKEN_CONFIG.get("default", {})
 
     @staticmethod
     def _get_token_generator(token_config: dict) -> TokenGenerator:
