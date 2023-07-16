@@ -100,9 +100,9 @@ class Tokenizer:
     def generate_tokenized_link(
         self,
         user,
-        domain: str = None,
-        protocol: str = None,
-        port: str = None,
+        domain: str | None = None,
+        protocol: str | None = None,
+        port: str | None = None,
         send_email: bool = False,
     ) -> tuple[str, str, str, bool]:
         domain = domain or self.domain

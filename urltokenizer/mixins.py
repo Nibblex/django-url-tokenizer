@@ -17,10 +17,10 @@ class URLTokenizerMixin:
 
     def generate_tokenized_link(
         self,
-        token_type: str | Enum,
-        domain: str = None,
-        protocol: str = None,
-        port: str = None,
+        token_type: str | Enum | None = None,
+        domain: str | None = None,
+        protocol: str | None = None,
+        port: str | None = None,
         send_email: bool = False,
     ) -> tuple[str, str, str, bool]:
         tokenizer = Tokenizer(token_type)
@@ -30,8 +30,8 @@ class URLTokenizerMixin:
 
     def check_token(
         self,
-        token_type: str | Enum,
-        token: str,
+        token_type: str | Enum | None = None,
+        token: str | None = None,
         fail_silently: bool | None = None,
         **kwargs
     ) -> bool:
