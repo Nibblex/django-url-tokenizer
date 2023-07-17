@@ -79,7 +79,7 @@ class URLTokenizer:
     def _get_token_generator(token_config: dict) -> TokenGenerator:
         return TokenGenerator(
             attributes=_get_or_else(token_config, "attributes", []),
-            preconditions=_get_or_else(token_config, "preconditions", []),
+            preconditions=_get_or_else(token_config, "preconditions", {}),
             callbacks=_get_or_else(token_config, "callbacks", []),
             timeout=_get_or_else(token_config, "timeout", 60),
         )

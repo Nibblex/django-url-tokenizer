@@ -20,7 +20,7 @@ class TokenGenerator:
     def __init__(
         self,
         attributes: list = [],
-        preconditions: list = [],
+        preconditions: list = {},
         callbacks: list = [],
         timeout: int = 60,
     ):
