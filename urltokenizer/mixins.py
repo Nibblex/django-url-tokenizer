@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ImproperlyConfigured
 from django.utils.translation import gettext_lazy as _
 
-from .tokenizer import Tokenizer
+from .tokenizer import URLTokenizer
 
 
 class URLTokenizerMixin:
@@ -24,7 +24,7 @@ class URLTokenizerMixin:
         port: str | None = None,
         send_email: bool = False,
     ) -> tuple[str, str, str, bool]:
-        tokenizer = Tokenizer(token_type)
+        tokenizer = URLTokenizer(token_type)
         return tokenizer.generate_tokenized_link(
             self,
             path=path,
@@ -41,7 +41,7 @@ class URLTokenizerMixin:
         fail_silently: bool | None = None,
         **kwargs
     ) -> bool:
-        tokenizer = Tokenizer(token_type)
+        tokenizer = URLTokenizer(token_type)
         uidb64 = tokenizer.encode(getattr(self, tokenizer.encoding_field))
         return (
             tokenizer.check_token(uidb64, token, fail_silently=fail_silently, **kwargs)

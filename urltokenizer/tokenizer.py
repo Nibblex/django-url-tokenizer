@@ -18,7 +18,7 @@ def _get_or_else(config: dict, key: str, default: Any) -> Any:
     return config.get(key, SETTINGS.get(key.upper(), default))
 
 
-class Tokenizer:
+class URLTokenizer:
     def __init__(self, token_type: str | Enum | None = None):
         self.token_type = self._parse_token_type(token_type)
         # at this point token_type is either None or a string
@@ -139,7 +139,9 @@ class Tokenizer:
 
         try:
             decoded_attr = self.decode(uidb64)
-        except DjangoUnicodeDecodeError:
+        except DjangoUnicodeDecodeError as e:
+            if not fail_silently:
+                raise e
             return None
 
         user = self.user_model.objects.filter(
@@ -161,4 +163,4 @@ class Tokenizer:
         return user
 
 
-default_tokenizer = Tokenizer()
+default_tokenizer = URLTokenizer()
