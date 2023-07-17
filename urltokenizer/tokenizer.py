@@ -131,17 +131,10 @@ class URLTokenizer:
 
         return uidb64, token, link, email_sent > 0
 
-    def check_token(
-        self, uidb64: str, token: str, fail_silently: bool | None = None, **kwargs
-    ):
-        if fail_silently is None:
-            fail_silently = self.fail_silently
-
+    def check_token(self, uidb64: str, token: str):
         try:
             decoded_attr = self.decode(uidb64)
-        except DjangoUnicodeDecodeError as e:
-            if not fail_silently:
-                raise e
+        except DjangoUnicodeDecodeError:
             return None
 
         user = self.user_model.objects.filter(
@@ -153,14 +146,17 @@ class URLTokenizer:
         if not self._token_generator.check_token(user, token):
             return None
 
+        return user
+
+    def run_callbacks(self, user, fail_silently: bool | None = None, **kwargs):
+        if fail_silently is None:
+            fail_silently = self.fail_silently
+
         try:
             self._token_generator.run_callbacks(user, **kwargs)
         except ValidationError as e:
-            if not fail_silently:
+            if fail_silently is False:
                 raise e
-            return None
-
-        return user
 
 
 default_tokenizer = URLTokenizer()
