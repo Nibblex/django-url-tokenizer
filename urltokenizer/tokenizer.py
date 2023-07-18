@@ -1,3 +1,4 @@
+import threading
 from enum import Enum
 from typing import Any, Iterable, List, Tuple
 
@@ -140,17 +141,30 @@ class URLTokenizer:
         port: str | None = None,
         send_email: bool = False,
     ) -> List[Tuple[str, str, str, bool]]:
-        return [
-            self.generate_tokenized_link(
-                user=user,
-                path=path,
-                domain=domain,
-                protocol=protocol,
-                port=port,
-                send_email=send_email,
+        result = []
+        threads = []
+
+        # Define a helper function to execute generate_tokenized_link for each user
+        def generate_link(user):
+            link = self.generate_tokenized_link(
+                user, path, domain, protocol, port, send_email
             )
-            for user in users
-        ]
+            result.append(link)
+
+        # Create a thread for each user
+        for user in users:
+            thread = threading.Thread(target=generate_link, args=(user,))
+            threads.append(thread)
+
+        # Start all the threads
+        for thread in threads:
+            thread.start()
+
+        # Wait for all the threads to finish
+        for thread in threads:
+            thread.join()
+
+        return result
 
     def check_token(self, uidb64: str, token: str):
         try:
