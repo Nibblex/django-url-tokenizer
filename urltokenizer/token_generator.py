@@ -97,13 +97,12 @@ class TokenGenerator:
             """
             Pop the next matching kwargs from the list of kwargs.
             """
-            for param in params:
-                for kwarg in kwargs:
-                    if param in kwarg:
-                        return kwargs.pop(kwargs.index(kwarg)), kwargs
-            return {}, kwargs
+            for i, kwarg in enumerate(kwargs):
+                if set(kwarg.keys()).issubset(params):
+                    return kwargs.pop(i)
+            return {}
 
-        callback_kwargs_copy = callback_kwargs.copy()
+        callback_kwargs_copy = list(callback_kwargs).copy()
 
         for callback in self.callbacks:
             method_name = callback.get("method")
@@ -118,7 +117,7 @@ class TokenGenerator:
             signature = inspect.signature(method)
             kwargs = pop_next_matching_kwargs(
                 callback_kwargs_copy, signature.parameters.keys()
-            )[0]
+            )
 
             # Add the default kwargs
             kwargs.update(callback.get("defaults", {}))
