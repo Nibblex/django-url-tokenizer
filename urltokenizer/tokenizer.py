@@ -148,12 +148,14 @@ class URLTokenizer:
 
         return user
 
-    def run_callbacks(self, user, fail_silently: bool | None = None, **kwargs):
+    def run_callbacks(
+        self, user, callback_kwargs: dict = {}, fail_silently: bool | None = None
+    ):
         if fail_silently is None:
             fail_silently = self.fail_silently
 
         try:
-            self._token_generator.run_callbacks(user, **kwargs)
+            self._token_generator.run_callbacks(user, callback_kwargs=callback_kwargs)
         except ValidationError as e:
             if fail_silently is False:
                 raise e

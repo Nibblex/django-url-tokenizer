@@ -1,3 +1,4 @@
+import inspect
 from datetime import datetime
 
 from django.conf import settings
@@ -87,22 +88,28 @@ class TokenGenerator:
 
         return True
 
-    def run_callbacks(self, user, **kwargs):
+    def run_callbacks(self, user, callback_kwargs={}):
         """
         Run callbacks for a given user.
         """
         for callback in self.callbacks:
+            method_name = callback.get("method")
             # Search for the callback method on the user model
-            method = getattr(user, callback.get("method"), None)
+            method = getattr(user, method_name, None)
             if method is None:
-                continue
+                raise ValidationError(
+                    _("callback method '%(method_name)s' does not exist on user model"),
+                )
 
             # Filter the kwargs to only include the ones that the callback accepts
+            kwargs = callback_kwargs.get(method_name, {})
+
+            # Filter the kwargs to only include the ones that the callback accepts
+            signature = inspect.signature(method)
             kwargs = {
-                key: value
-                for key, value in kwargs.items()
-                if key in callback.get("kwargs", [])
+                k: v for k, v in kwargs.items() if k in signature.parameters.keys()
             }
+
             # Add the default kwargs
             kwargs.update(callback.get("defaults", {}))
 

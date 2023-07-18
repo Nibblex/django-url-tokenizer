@@ -38,8 +38,8 @@ class URLTokenizerMixin:
         self,
         token_type: str | Enum | None = None,
         token: str | None = None,
+        callback_kwargs: dict = {},
         fail_silently: bool | None = None,
-        **kwargs
     ) -> bool:
         tokenizer = URLTokenizer(token_type)
         uidb64 = tokenizer.encode(getattr(self, tokenizer.encoding_field))
@@ -47,6 +47,8 @@ class URLTokenizerMixin:
         if tokenizer.check_token(uidb64, token) is None:
             return False
 
-        tokenizer.run_callbacks(self, fail_silently=fail_silently, **kwargs)
+        tokenizer.run_callbacks(
+            self, callback_kwargs=callback_kwargs, fail_silently=fail_silently
+        )
 
         return True
