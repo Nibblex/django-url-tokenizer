@@ -88,10 +88,23 @@ class TokenGenerator:
 
         return True
 
-    def run_callbacks(self, user, callback_kwargs={}):
+    def run_callbacks(self, user, callback_kwargs=[]):
         """
         Run callbacks for a given user.
         """
+
+        def pop_next_matching_kwargs(kwargs, params):
+            """
+            Pop the next matching kwargs from the list of kwargs.
+            """
+            for param in params:
+                for kwarg in kwargs:
+                    if param in kwarg:
+                        return kwargs.pop(kwargs.index(kwarg)), kwargs
+            return {}, kwargs
+
+        callback_kwargs_copy = callback_kwargs.copy()
+
         for callback in self.callbacks:
             method_name = callback.get("method")
             # Search for the callback method on the user model
@@ -101,14 +114,11 @@ class TokenGenerator:
                     _("callback method '%(method_name)s' does not exist on user model"),
                 )
 
-            # Filter the kwargs to only include the ones that the callback accepts
-            kwargs = callback_kwargs.get(method_name, {})
-
-            # Filter the kwargs to only include the ones that the callback accepts
+            # Get the kwargs for the callback method
             signature = inspect.signature(method)
-            kwargs = {
-                k: v for k, v in kwargs.items() if k in signature.parameters.keys()
-            }
+            kwargs = pop_next_matching_kwargs(
+                callback_kwargs_copy, signature.parameters.keys()
+            )[0]
 
             # Add the default kwargs
             kwargs.update(callback.get("defaults", {}))

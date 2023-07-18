@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Iterable
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ImproperlyConfigured
@@ -38,7 +39,7 @@ class URLTokenizerMixin:
         self,
         token_type: str | Enum | None = None,
         token: str | None = None,
-        callback_kwargs: dict = {},
+        callback_kwargs: Iterable[dict] = [],
         fail_silently: bool | None = None,
     ) -> bool:
         tokenizer = URLTokenizer(token_type)

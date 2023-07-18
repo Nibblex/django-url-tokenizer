@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any
+from typing import Any, Iterable
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -149,7 +149,10 @@ class URLTokenizer:
         return user
 
     def run_callbacks(
-        self, user, callback_kwargs: dict = {}, fail_silently: bool | None = None
+        self,
+        user,
+        callback_kwargs: Iterable[dict] = [],
+        fail_silently: bool | None = None,
     ):
         if fail_silently is None:
             fail_silently = self.fail_silently
