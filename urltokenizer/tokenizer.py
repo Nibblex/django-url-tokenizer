@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any, Iterable
+from typing import Any, Iterable, List, Tuple
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -108,7 +108,7 @@ class URLTokenizer:
         protocol: str | None = None,
         port: str | None = None,
         send_email: bool = False,
-    ) -> tuple[str, str, str, bool]:
+    ) -> Tuple[str, str, str, bool]:
         path = path or self.path
         domain = domain or self.domain
         protocol = protocol or self.protocol
@@ -130,6 +130,27 @@ class URLTokenizer:
             )
 
         return uidb64, token, link, email_sent > 0
+
+    def bulk_generate_tokenized_link(
+        self,
+        users: Iterable,
+        path: str | None = None,
+        domain: str | None = None,
+        protocol: str | None = None,
+        port: str | None = None,
+        send_email: bool = False,
+    ) -> List[Tuple[str, str, str, bool]]:
+        return [
+            self.generate_tokenized_link(
+                user=user,
+                path=path,
+                domain=domain,
+                protocol=protocol,
+                port=port,
+                send_email=send_email,
+            )
+            for user in users
+        ]
 
     def check_token(self, uidb64: str, token: str):
         try:

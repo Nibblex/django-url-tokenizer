@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Iterable
+from typing import Iterable, Tuple
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ImproperlyConfigured
@@ -24,7 +24,7 @@ class URLTokenizerMixin:
         protocol: str | None = None,
         port: str | None = None,
         send_email: bool = False,
-    ) -> tuple[str, str, str, bool]:
+    ) -> Tuple[str, str, str, bool]:
         tokenizer = URLTokenizer(token_type)
         return tokenizer.generate_tokenized_link(
             self,
