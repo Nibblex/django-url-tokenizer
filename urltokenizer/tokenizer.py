@@ -1,6 +1,7 @@
 import threading
+from collections import namedtuple
 from enum import Enum
-from typing import Any, Iterable, List, Tuple
+from typing import Any, Iterable, List, NamedTuple
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -109,7 +110,7 @@ class URLTokenizer:
         protocol: str | None = None,
         port: str | None = None,
         send_email: bool = False,
-    ) -> Tuple[str, str, str, bool]:
+    ) -> NamedTuple[str, str, str, bool]:
         path = path or self.path
         domain = domain or self.domain
         protocol = protocol or self.protocol
@@ -130,7 +131,11 @@ class URLTokenizer:
                 fail_silently=True,
             )
 
-        return uidb64, token, link, email_sent > 0
+        named_tuple = namedtuple(
+            getattr(user, self.email_field), ["uidb64", "token", "link", "email_sent"]
+        )
+
+        return named_tuple(uidb64, token, link, email_sent > 0)
 
     def bulk_generate_tokenized_link(
         self,
@@ -140,16 +145,16 @@ class URLTokenizer:
         protocol: str | None = None,
         port: str | None = None,
         send_email: bool = False,
-    ) -> List[Tuple[str, str, str, bool]]:
+    ) -> List[NamedTuple[str, str, str, bool]]:
         result = []
         threads = []
 
         # Define a helper function to execute generate_tokenized_link for each user
         def generate_link(user):
-            link = self.generate_tokenized_link(
+            named_tuple = self.generate_tokenized_link(
                 user, path, domain, protocol, port, send_email
             )
-            result.append(link)
+            result.append(named_tuple)
 
         # Create a thread for each user
         for user in users:
