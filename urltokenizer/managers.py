@@ -1,9 +1,11 @@
 from enum import Enum
 
+from django.db import models
+
 from .tokenizer import URLTokenizer
 
 
-class URLTokenizerManager:
+class URLTokenizerQueryset(models.QuerySet):
     def bulk_generate_tokenized_link(
         self,
         token_type: str | Enum | None = None,
@@ -24,3 +26,6 @@ class URLTokenizerManager:
             email_subject=email_subject,
             send_email=send_email,
         )
+
+
+URLTokenizerManager = models.Manager.from_queryset(URLTokenizerQueryset)
