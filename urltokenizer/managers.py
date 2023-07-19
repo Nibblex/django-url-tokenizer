@@ -1,11 +1,22 @@
 from enum import Enum
 
 from django.db import models
+from django.contrib.auth import get_user_model
+from django.core.exceptions import ImproperlyConfigured
+from django.utils.translation import gettext_lazy as _
 
 from .tokenizer import URLTokenizer
 
 
 class URLTokenizerQueryset(models.QuerySet):
+    # Check if the QuerySet's model is the auth user model
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.model != get_user_model():
+            raise ImproperlyConfigured(
+                _("URLTokenizerManager must be used with the auth user model")
+            )
+
     def bulk_generate_tokenized_link(
         self,
         token_type: str | Enum | None = None,
