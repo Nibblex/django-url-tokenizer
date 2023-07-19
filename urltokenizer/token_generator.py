@@ -87,7 +87,7 @@ class TokenGenerator:
 
         return True
 
-    def run_callbacks(self, user, callback_kwargs=[]):
+    def run_callbacks(self, user, callback_kwargs=[], fail_silently=False):
         """
         Run callbacks for a given user.
         """
@@ -108,6 +108,9 @@ class TokenGenerator:
             # Search for the callback method on the user model
             method = getattr(user, method_name, None)
             if method is None:
+                if fail_silently:
+                    continue
+
                 raise ValidationError(
                     _("callback method '%(method_name)s' does not exist on user model"),
                 )
@@ -125,7 +128,8 @@ class TokenGenerator:
             try:
                 method(**kwargs)
             except Exception as e:
-                raise ValidationError(_("failed to execute callback")) from e
+                if not fail_silently:
+                    raise ValidationError(_("failed to execute callback")) from e
 
     def _make_token_with_timestamp(self, user, timestamp):
         # timestamp is number of seconds since 2001-1-1. Converted to base 36,

@@ -200,11 +200,9 @@ class URLTokenizer:
         if fail_silently is None:
             fail_silently = self.fail_silently
 
-        try:
-            self._token_generator.run_callbacks(user, callback_kwargs=callback_kwargs)
-        except ValidationError as e:
-            if fail_silently is False:
-                raise e
+        self._token_generator.run_callbacks(
+            user, callback_kwargs=callback_kwargs, fail_silently=fail_silently
+        )
 
 
 default_tokenizer = URLTokenizer()
