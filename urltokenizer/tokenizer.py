@@ -109,12 +109,14 @@ class URLTokenizer:
         domain: str | None = None,
         protocol: str | None = None,
         port: str | None = None,
+        email_subject: str | None = None,
         send_email: bool = False,
     ):
         path = path or self.path
         domain = domain or self.domain
         protocol = protocol or self.protocol
         port = port or self.port
+        email_subject = email_subject or self.email_subject
 
         uidb64 = self.encode(getattr(user, self.encoding_field))
         token = self._token_generator.make_token(user)
@@ -124,7 +126,7 @@ class URLTokenizer:
         email_sent, email = False, getattr(user, self.email_field)
         if send_email and self.email_enabled:
             email_sent = send_mail(
-                subject=self.email_subject,
+                subject=email_subject,
                 message=link,
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[email],

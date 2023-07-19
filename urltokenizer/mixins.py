@@ -23,6 +23,7 @@ class URLTokenizerMixin:
         domain: str | None = None,
         protocol: str | None = None,
         port: str | None = None,
+        email_subject: str | None = None,
         send_email: bool = False,
     ):
         tokenizer = URLTokenizer(token_type)
@@ -32,6 +33,7 @@ class URLTokenizerMixin:
             domain=domain,
             protocol=protocol,
             port=port,
+            email_subject=email_subject,
             send_email=send_email,
         )
 
