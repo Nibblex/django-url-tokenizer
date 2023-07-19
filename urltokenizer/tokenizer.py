@@ -121,21 +121,21 @@ class URLTokenizer:
 
         link = f"{protocol}://{domain}:{port}/{self.path}?uid={uidb64}&key={token}"
 
-        email_sent = 0
+        email_sent, email = False, getattr(user, self.email_field)
         if send_email and self.email_enabled:
             email_sent = send_mail(
                 subject=self.email_subject,
                 message=link,
                 from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[getattr(user, self.email_field)],
+                recipient_list=[email],
                 fail_silently=True,
             )
 
         named_tuple = namedtuple(
-            getattr(user, self.email_field), ["uidb64", "token", "link", "email_sent"]
+            "User", ["email", "uidb64", "token", "link", "email_sent"]
         )
 
-        return named_tuple(uidb64, token, link, email_sent > 0)
+        return named_tuple(email, uidb64, token, link, email_sent > 0)
 
     def bulk_generate_tokenized_link(
         self,
