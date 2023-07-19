@@ -10,8 +10,7 @@ from django.utils.translation import gettext_lazy as _
 
 class TokenGenerator:
     """
-    Strategy object used to generate and check tokens for the password
-    reset mechanism.
+    Strategy object used to generate and check tokens.
     """
 
     key_salt = "django.contrib.auth.tokens.PasswordResetTokenGenerator"
@@ -20,9 +19,9 @@ class TokenGenerator:
 
     def __init__(
         self,
-        attributes: list = [],
-        preconditions: list = {},
-        callbacks: list = [],
+        attributes: list[str] = [],
+        preconditions: dict = {},
+        callbacks: list[str] = [],
         timeout: int = 60,
     ):
         self.algorithm = self.algorithm or "sha256"
