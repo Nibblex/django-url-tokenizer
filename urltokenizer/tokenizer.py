@@ -146,6 +146,7 @@ class URLTokenizer:
         domain: str | None = None,
         protocol: str | None = None,
         port: str | None = None,
+        email_subject: str | None = None,
         send_email: bool = False,
     ):
         result = []
@@ -154,7 +155,7 @@ class URLTokenizer:
         # Define a helper function to execute generate_tokenized_link for each user
         def generate_link(user):
             named_tuple = self.generate_tokenized_link(
-                user, path, domain, protocol, port, send_email
+                user, path, domain, protocol, port, email_subject, send_email
             )
             result.append(named_tuple)
 
