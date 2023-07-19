@@ -1,7 +1,7 @@
 import threading
 from collections import namedtuple
 from enum import Enum
-from typing import Any, Iterable, List, NamedTuple
+from typing import Any, Iterable
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -110,7 +110,7 @@ class URLTokenizer:
         protocol: str | None = None,
         port: str | None = None,
         send_email: bool = False,
-    ) -> NamedTuple[str, str, str, bool]:
+    ):
         path = path or self.path
         domain = domain or self.domain
         protocol = protocol or self.protocol
@@ -145,7 +145,7 @@ class URLTokenizer:
         protocol: str | None = None,
         port: str | None = None,
         send_email: bool = False,
-    ) -> List[NamedTuple[str, str, str, bool]]:
+    ):
         result = []
         threads = []
 
