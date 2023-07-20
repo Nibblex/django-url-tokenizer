@@ -103,6 +103,7 @@ class TokenGenerator:
 
         callback_kwargs_copy = list(callback_kwargs).copy()
 
+        callbacks_returns = {}
         for callback in self.callbacks:
             method_name = callback.get("method")
             # Search for the callback method on the user model
@@ -126,10 +127,19 @@ class TokenGenerator:
 
             # Execute the callback
             try:
-                method(**kwargs)
+                callback_return = method(**kwargs)
             except Exception as e:
                 if not fail_silently:
                     raise ValidationError(_("failed to execute callback")) from e
+
+                continue
+
+            # callbacks_returns is a dict of lists
+            # each list contains the return values of the callback methods
+            if callback.get("return_value", False):
+                callbacks_returns.setdefault(method_name, []).append(callback_return)
+
+        return callbacks_returns
 
     def _make_token_with_timestamp(self, user, timestamp):
         # timestamp is number of seconds since 2001-1-1. Converted to base 36,

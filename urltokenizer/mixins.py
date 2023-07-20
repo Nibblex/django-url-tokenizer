@@ -48,10 +48,10 @@ class URLTokenizerMixin:
         uidb64 = tokenizer.encode(getattr(self, tokenizer.encoding_field))
 
         if tokenizer.check_token(uidb64, token) is None:
-            return False
+            return False, {}
 
-        tokenizer.run_callbacks(
+        callbacks_returns = tokenizer.run_callbacks(
             self, callback_kwargs=callback_kwargs, fail_silently=fail_silently
         )
 
-        return True
+        return True, callbacks_returns
