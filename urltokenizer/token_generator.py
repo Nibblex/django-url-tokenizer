@@ -130,7 +130,7 @@ class TokenGenerator:
                 callback_return = method(**kwargs)
             except Exception as e:
                 if not fail_silently:
-                    raise ValidationError(_("failed to execute callback")) from e
+                    raise ValidationError(_(f"failed to execute callback: {e}"))
 
                 continue
 
