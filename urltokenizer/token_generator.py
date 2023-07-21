@@ -2,10 +2,11 @@ import inspect
 from datetime import datetime
 
 from django.conf import settings
-from django.core.exceptions import ValidationError
 from django.utils.crypto import constant_time_compare, salted_hmac
 from django.utils.http import base36_to_int, int_to_base36
 from django.utils.translation import gettext_lazy as _
+
+from .exceptions import InvalidMethodError, CallbackExecutionError
 
 
 class TokenGenerator:
@@ -112,7 +113,7 @@ class TokenGenerator:
                 if fail_silently:
                     continue
 
-                raise ValidationError(
+                raise InvalidMethodError(
                     _("callback method '%(method_name)s' does not exist on user model"),
                 )
 
@@ -130,7 +131,7 @@ class TokenGenerator:
                 callback_return = method(**kwargs)
             except Exception as e:
                 if not fail_silently:
-                    raise ValidationError(_(f"failed to execute callback: {e}"))
+                    raise CallbackExecutionError(e)
 
                 continue
 

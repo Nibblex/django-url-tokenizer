@@ -5,12 +5,13 @@ from typing import Any, Iterable
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.core.exceptions import ImproperlyConfigured, ValidationError
+from django.core.exceptions import ImproperlyConfigured
 from django.core.mail import send_mail
 from django.utils.encoding import force_bytes, force_str, DjangoUnicodeDecodeError
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.translation import gettext_lazy as _
 
+from .exceptions import InvalidTokenTypeError
 from .token_generator import TokenGenerator
 
 SETTINGS = getattr(settings, "URL_TOKENIZER_SETTINGS", {})
@@ -73,7 +74,7 @@ class URLTokenizer:
         validate_token_type = settings_.get("VALIDATE_TOKEN_TYPE", True)
 
         if token_config is None and validate_token_type:
-            raise ValidationError(_(f"invalid token type: {token_type}"))
+            raise InvalidTokenTypeError(_(f"invalid token type: {token_type}"))
 
         return token_config or TOKEN_CONFIG.get("default", {})
 
