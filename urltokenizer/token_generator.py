@@ -76,7 +76,7 @@ class TokenGenerator:
             return False
 
         # Check the timestamp is within limit.
-        if (self.__num_seconds(self.__now) - ts) > self.timeout:
+        if self.timeout and (self.__num_seconds(self.__now) - ts) > self.timeout:
             return False
 
         # Check that the user attribute values meet the preconditions
