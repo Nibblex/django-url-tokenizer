@@ -135,10 +135,12 @@ class URLTokenizer:
             )
 
         named_tuple = namedtuple(
-            "URLToken", ["user", "uidb64", "token", "link", "email_sent"]
+            "URLToken",
+            ["user", "email", "name", "uidb64", "token", "link", "email_sent"],
         )
 
-        return named_tuple(user, uidb64, token, link, email_sent > 0)
+        name = getattr(user, getattr(user, "NAME_FIELD", ""), "")
+        return named_tuple(user, email, name, uidb64, token, link, email_sent > 0)
 
     def bulk_generate_tokenized_link(
         self,
