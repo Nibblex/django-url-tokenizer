@@ -21,13 +21,13 @@ class TokenGenerator:
     def __init__(
         self,
         attributes: list[str] = [],
-        preconditions: dict = {},
+        check_preconditions: dict = {},
         callbacks: list[str] = [],
         timeout: int = 60,
     ):
         self.algorithm = self.algorithm or "sha256"
         self.attributes = attributes
-        self.preconditions = preconditions
+        self.check_preconditions = check_preconditions
         self.callbacks = callbacks
         self.timeout = timeout
 
@@ -79,10 +79,11 @@ class TokenGenerator:
         if self.timeout and (self.__num_seconds(self.__now) - ts) > self.timeout:
             return False
 
-        # Check that the user attribute values meet the preconditions
-        preconditions = self.preconditions.items()
+        # Check that the user attribute values meet the check_preconditions
+        check_preconditions = self.check_preconditions.items()
         if not all(
-            getattr(user, attribute) == value for attribute, value in preconditions
+            getattr(user, attribute) == value
+            for attribute, value in check_preconditions
         ):
             return False
 

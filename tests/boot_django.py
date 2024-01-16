@@ -53,7 +53,7 @@ def boot_django():
                 "verify": {
                     "path": "verify/",
                     "attributes": ["verified", "verified_at"],
-                    "preconditions": {
+                    "check_preconditions": {
                         "active": True,
                         "verified": False,
                         "locked": False,
@@ -64,7 +64,7 @@ def boot_django():
                 "password-recovery": {
                     "path": "password-recovery/",
                     "attributes": ["password", "last_login"],
-                    "preconditions": {
+                    "check_preconditions": {
                         "active": True,
                         "verified": True,
                         "locked": False,

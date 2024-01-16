@@ -45,6 +45,7 @@ class URLTokenizer:
         self.email_subject = _get_or_else(
             token_config, "email_subject", "link generated with django-url-tokenizer"
         )
+        self.send_preconditions = _get_or_else(token_config, "send_preconditions", {})
 
     @staticmethod
     def _parse_token_type(token_type: Optional[Union[str, Enum]]) -> Optional[str]:
@@ -82,7 +83,7 @@ class URLTokenizer:
     def _get_token_generator(token_config: dict) -> TokenGenerator:
         return TokenGenerator(
             attributes=_get_or_else(token_config, "attributes", []),
-            preconditions=_get_or_else(token_config, "preconditions", {}),
+            check_preconditions=_get_or_else(token_config, "check_preconditions", {}),
             callbacks=_get_or_else(token_config, "callbacks", []),
             timeout=_get_or_else(token_config, "timeout", 60),
         )
@@ -123,6 +124,13 @@ class URLTokenizer:
         token = self._token_generator.make_token(user)
 
         link = f"{protocol}://{domain}:{port}/{self.path}?uid={uidb64}&key={token}"
+
+        send_email = send_email and all(
+            (
+                getattr(user, key) == value
+                for key, value in self.send_preconditions.items()
+            )
+        )
 
         email_sent, email = False, getattr(user, self.email_field)
         if send_email and self.email_enabled:
