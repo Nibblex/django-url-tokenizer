@@ -11,8 +11,9 @@ from django.utils.encoding import force_bytes, force_str, DjangoUnicodeDecodeErr
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.translation import gettext_lazy as _
 
-from .exceptions import InvalidTokenTypeError
+from .exceptions import InvalidTokenTypeError, SendPreconditionExecutionError
 from .token_generator import TokenGenerator
+from .utils import map_functions
 
 SETTINGS = getattr(settings, "URL_TOKENIZER_SETTINGS", {})
 
@@ -45,7 +46,9 @@ class URLTokenizer:
         self.email_subject = _get_or_else(
             token_config, "email_subject", "link generated with django-url-tokenizer"
         )
-        self.send_preconditions = _get_or_else(token_config, "send_preconditions", {})
+        self.send_preconditions = map_functions(
+            _get_or_else(token_config, "send_preconditions", [])
+        )
 
     @staticmethod
     def _parse_token_type(token_type: Optional[Union[str, Enum]]) -> Optional[str]:
@@ -83,7 +86,7 @@ class URLTokenizer:
     def _get_token_generator(token_config: dict) -> TokenGenerator:
         return TokenGenerator(
             attributes=_get_or_else(token_config, "attributes", []),
-            check_preconditions=_get_or_else(token_config, "check_preconditions", {}),
+            check_preconditions=_get_or_else(token_config, "check_preconditions", []),
             callbacks=_get_or_else(token_config, "callbacks", []),
             timeout=_get_or_else(token_config, "timeout", 60),
         )
@@ -112,6 +115,7 @@ class URLTokenizer:
         protocol: Optional[str] = None,
         port: Optional[str] = None,
         email_subject: Optional[str] = None,
+        fail_silently: Optional[bool] = None,
         send_email: bool = False,
     ):
         path = path or self.path
@@ -120,17 +124,23 @@ class URLTokenizer:
         port = port or self.port
         email_subject = email_subject or self.email_subject
 
+        if fail_silently is None:
+            fail_silently = self.fail_silently
+
         uidb64 = self.encode(getattr(user, self.encoding_field))
         token = self._token_generator.make_token(user)
 
         link = f"{protocol}://{domain}:{port}/{self.path}?uid={uidb64}&key={token}"
 
-        send_email = send_email and all(
-            (
-                getattr(user, key) == value
-                for key, value in self.send_preconditions.items()
-            )
-        )
+        for pred in self.send_preconditions:
+            try:
+                send_email = send_email and pred(user)
+            except Exception as e:
+                if not fail_silently:
+                    raise SendPreconditionExecutionError(e)
+
+                send_email = False
+                break
 
         email_sent, email = False, getattr(user, self.email_field)
         if send_email and self.email_enabled:
@@ -139,7 +149,7 @@ class URLTokenizer:
                 message=link,
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[email],
-                fail_silently=True,
+                fail_silently=fail_silently,
             )
 
         named_tuple = namedtuple(
@@ -185,7 +195,12 @@ class URLTokenizer:
 
         return result
 
-    def check_token(self, uidb64: str, token: str):
+    def check_token(
+        self, uidb64: str, token: str, fail_silently: Optional[bool] = None
+    ):
+        if fail_silently is None:
+            fail_silently = self.fail_silently
+
         try:
             decoded_attr = self.decode(uidb64)
         except DjangoUnicodeDecodeError:
@@ -197,7 +212,9 @@ class URLTokenizer:
         if not user:
             return None
 
-        if not self._token_generator.check_token(user, token):
+        if not self._token_generator.check_token(
+            user, token, fail_silently=fail_silently
+        ):
             return None
 
         return user

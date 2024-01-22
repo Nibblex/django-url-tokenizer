@@ -1,12 +1,18 @@
 import inspect
 from datetime import datetime
+from typing import Callable
 
 from django.conf import settings
 from django.utils.crypto import constant_time_compare, salted_hmac
 from django.utils.http import base36_to_int, int_to_base36
 from django.utils.translation import gettext_lazy as _
 
-from .exceptions import InvalidMethodError, CallbackExecutionError
+from .exceptions import (
+    InvalidMethodError,
+    CheckPreconditionExecutionError,
+    CallbackExecutionError,
+)
+from .utils import map_functions
 
 
 class TokenGenerator:
@@ -21,13 +27,13 @@ class TokenGenerator:
     def __init__(
         self,
         attributes: list[str] = [],
-        check_preconditions: dict = {},
+        check_preconditions: list[str | Callable] = [],
         callbacks: list[str] = [],
         timeout: int = 60,
     ):
         self.algorithm = self.algorithm or "sha256"
         self.attributes = attributes
-        self.check_preconditions = check_preconditions
+        self.check_preconditions = map_functions(check_preconditions)
         self.callbacks = callbacks
         self.timeout = timeout
 
@@ -49,17 +55,17 @@ class TokenGenerator:
 
     def make_token(self, user):
         """
-        Return a token that can be used once to do a password reset
-        for the given user.
+        Return a token that can be used once for the given user.
         """
         return self._make_token_with_timestamp(user, self.__num_seconds(self.__now))
 
-    def check_token(self, user, token):
+    def check_token(self, user, token, fail_silently=False):
         """
-        Check that a password reset token is correct for a given user.
+        Check that a token is correct for a given user.
         """
         if not (user and token):
             return False
+
         # Parse the token
         try:
             ts_b36, _ = token.split("-")
@@ -79,13 +85,16 @@ class TokenGenerator:
         if self.timeout and (self.__num_seconds(self.__now) - ts) > self.timeout:
             return False
 
-        # Check that the user attribute values meet the check_preconditions
-        check_preconditions = self.check_preconditions.items()
-        if not all(
-            getattr(user, attribute) == value
-            for attribute, value in check_preconditions
-        ):
-            return False
+        # Check the preconditions
+        for pred in self.check_preconditions:
+            try:
+                if not pred(user):
+                    return False
+            except Exception as e:
+                if not fail_silently:
+                    raise CheckPreconditionExecutionError(e)
+
+                return False
 
         return True
 
