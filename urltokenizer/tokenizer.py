@@ -13,7 +13,7 @@ from django.utils.translation import gettext_lazy as _
 
 from .exceptions import InvalidTokenTypeError, SendPreconditionExecutionError
 from .token_generator import TokenGenerator
-from .utils import map_functions
+from .utils import str_import
 
 SETTINGS = getattr(settings, "URL_TOKENIZER_SETTINGS", {})
 
@@ -46,7 +46,7 @@ class URLTokenizer:
         self.email_subject = _get_or_else(
             token_config, "email_subject", "link generated with django-url-tokenizer"
         )
-        self.send_preconditions = map_functions(
+        self.send_preconditions = str_import(
             _get_or_else(token_config, "send_preconditions", [])
         )
 
@@ -127,22 +127,39 @@ class URLTokenizer:
         if fail_silently is None:
             fail_silently = self.fail_silently
 
-        uidb64 = self.encode(getattr(user, self.encoding_field))
-        token = self._token_generator.make_token(user)
-
-        link = f"{protocol}://{domain}:{port}/{self.path}?uid={uidb64}&key={token}"
+        named_tuple = namedtuple(
+            "URLToken",
+            [
+                "user",
+                "email",
+                "name",
+                "uidb64",
+                "token",
+                "link",
+                "precondition_failed",
+                "email_sent",
+            ],
+        )
+        email = getattr(user, self.email_field)
+        name = getattr(user, getattr(user, "NAME_FIELD", ""), "")
 
         for pred in self.send_preconditions:
             try:
-                send_email = send_email and pred(user)
+                check = pred(user)
             except Exception as e:
                 if not fail_silently:
                     raise SendPreconditionExecutionError(e)
 
-                send_email = False
-                break
+                check = False
 
-        email_sent, email = False, getattr(user, self.email_field)
+            if not check:
+                return named_tuple(user, email, name, "", "", "", True, False)
+
+        uidb64 = self.encode(getattr(user, self.encoding_field))
+        token = self._token_generator.make_token(user)
+        link = f"{protocol}://{domain}:{port}/{self.path}?uid={uidb64}&key={token}"
+
+        email_sent = False
         if send_email and self.email_enabled:
             email_sent = send_mail(
                 subject=email_subject,
@@ -152,13 +169,9 @@ class URLTokenizer:
                 fail_silently=fail_silently,
             )
 
-        named_tuple = namedtuple(
-            "URLToken",
-            ["user", "email", "name", "uidb64", "token", "link", "email_sent"],
+        return named_tuple(
+            user, email, name, uidb64, token, link, False, email_sent > 0
         )
-
-        name = getattr(user, getattr(user, "NAME_FIELD", ""), "")
-        return named_tuple(user, email, name, uidb64, token, link, email_sent > 0)
 
     def bulk_generate_tokenized_link(
         self,

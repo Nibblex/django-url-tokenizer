@@ -12,7 +12,7 @@ from .exceptions import (
     CheckPreconditionExecutionError,
     CallbackExecutionError,
 )
-from .utils import map_functions
+from .utils import str_import
 
 
 class TokenGenerator:
@@ -33,7 +33,7 @@ class TokenGenerator:
     ):
         self.algorithm = self.algorithm or "sha256"
         self.attributes = attributes
-        self.check_preconditions = map_functions(check_preconditions)
+        self.check_preconditions = str_import(check_preconditions)
         self.callbacks = callbacks
         self.timeout = timeout
 
@@ -91,10 +91,10 @@ class TokenGenerator:
                 if not pred(user):
                     return False
             except Exception as e:
-                if not fail_silently:
-                    raise CheckPreconditionExecutionError(e)
+                if fail_silently:
+                    return False
 
-                return False
+                raise CheckPreconditionExecutionError(e)
 
         return True
 
