@@ -18,7 +18,7 @@ from .utils import str_import
 SETTINGS = getattr(settings, "URL_TOKENIZER_SETTINGS", {})
 
 
-def _get_or_else(config: dict, key: str, default: Any) -> Any:
+def from_config(config: dict, key: str, default: Any) -> Any:
     return config.get(key, SETTINGS.get(key.upper(), default))
 
 
@@ -31,23 +31,24 @@ class URLTokenizer:
         self._token_generator = self._get_token_generator(token_config)
 
         # token
-        self.encoding_field = _get_or_else(token_config, "encoding_field", "pk")
-        self.fail_silently = _get_or_else(token_config, "fail_silently", False)
+        self.encoding_field = from_config(token_config, "encoding_field", "pk")
+        self.fail_silently = from_config(token_config, "fail_silently", False)
 
         # url
-        self.path = _get_or_else(token_config, "path", "").strip("/")
-        self.domain = _get_or_else(token_config, "domain", "localhost")
-        self.protocol = _get_or_else(token_config, "protocol", "http")
-        self.port = _get_or_else(token_config, "port", "80")
+        self.path = from_config(token_config, "path", "").strip("/")
+        self.domain = from_config(token_config, "domain", "localhost")
+        self.protocol = from_config(token_config, "protocol", "http")
+        self.port = from_config(token_config, "port", "80")
 
         # email
-        self.email_enabled = _get_or_else(token_config, "email_enabled", False)
-        self.email_field = _get_or_else(token_config, "email_field", "email")
-        self.email_subject = _get_or_else(
+        self.email_enabled = from_config(token_config, "email_enabled", False)
+        self.email_field = from_config(token_config, "email_field", "email")
+        self.email_subject = from_config(
             token_config, "email_subject", "link generated with django-url-tokenizer"
         )
         self.send_preconditions = str_import(
-            _get_or_else(token_config, "send_preconditions", [])
+            SETTINGS.get("SEND_PRECONDITIONS", [])
+            + token_config.get("send_preconditions", [])
         )
 
     @staticmethod
@@ -84,11 +85,16 @@ class URLTokenizer:
 
     @staticmethod
     def _get_token_generator(token_config: dict) -> TokenGenerator:
+        check_preconditions = str_import(
+            SETTINGS.get("CHECK_PRECONDITIONS", [])
+            + token_config.get("check_preconditions", [])
+        )
+
         return TokenGenerator(
-            attributes=_get_or_else(token_config, "attributes", []),
-            check_preconditions=_get_or_else(token_config, "check_preconditions", []),
-            callbacks=_get_or_else(token_config, "callbacks", []),
-            timeout=_get_or_else(token_config, "timeout", 60),
+            attributes=from_config(token_config, "attributes", []),
+            check_preconditions=check_preconditions,
+            callbacks=from_config(token_config, "callbacks", []),
+            timeout=from_config(token_config, "timeout", 60),
         )
 
     @property
