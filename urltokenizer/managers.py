@@ -27,6 +27,7 @@ class URLTokenizerQueryset(models.QuerySet):
         protocol: Optional[str] = None,
         port: Optional[str] = None,
         email_subject: Optional[str] = None,
+        fail_silently: Optional[bool] = None,
         send_email: bool = False,
     ):
         tokenizer = URLTokenizer(token_type)
@@ -37,6 +38,7 @@ class URLTokenizerQueryset(models.QuerySet):
             protocol=protocol,
             port=port,
             email_subject=email_subject,
+            fail_silently=fail_silently,
             send_email=send_email,
         )
 

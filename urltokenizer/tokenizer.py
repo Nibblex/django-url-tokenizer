@@ -168,17 +168,27 @@ class URLTokenizer:
         protocol: Optional[str] = None,
         port: Optional[str] = None,
         email_subject: Optional[str] = None,
+        fail_silently: Optional[bool] = None,
         send_email: bool = False,
     ):
-        result = []
-        threads = []
+        if fail_silently is None:
+            fail_silently = self.fail_silently
+
+        named_tuples, threads = [], []
 
         # Define a helper function to execute generate_tokenized_link for each user
         def generate_link(user):
             named_tuple = self.generate_tokenized_link(
-                user, path, domain, protocol, port, email_subject, send_email
+                user,
+                path=path,
+                domain=domain,
+                protocol=protocol,
+                port=port,
+                email_subject=email_subject,
+                fail_silently=fail_silently,
+                send_email=send_email,
             )
-            result.append(named_tuple)
+            named_tuples.append(named_tuple)
 
         # Create a thread for each user
         for user in users:
@@ -193,7 +203,7 @@ class URLTokenizer:
         for thread in threads:
             thread.join()
 
-        return result
+        return named_tuples
 
     def check_token(
         self, uidb64: str, token: str, fail_silently: Optional[bool] = None
