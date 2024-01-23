@@ -1,6 +1,5 @@
 import inspect
 from datetime import datetime
-from typing import Callable
 
 from django.conf import settings
 from django.utils.crypto import constant_time_compare, salted_hmac
@@ -26,9 +25,9 @@ class TokenGenerator:
 
     def __init__(
         self,
-        attributes: list[str] = [],
-        check_preconditions: list[str | Callable] = [],
-        callbacks: list[str] = [],
+        attributes: list = [],
+        check_preconditions: list = [],
+        callbacks: list = [],
         timeout: int = 60,
     ):
         self.algorithm = self.algorithm or "sha256"

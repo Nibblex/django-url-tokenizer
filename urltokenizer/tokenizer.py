@@ -1,7 +1,7 @@
 import threading
 from collections import namedtuple
 from enum import Enum
-from typing import Any, Iterable, Optional, Union
+from typing import Any, Iterable
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -23,7 +23,7 @@ def from_config(config: dict, key: str, default: Any) -> Any:
 
 
 class URLTokenizer:
-    def __init__(self, token_type: Optional[Union[str, Enum]] = None):
+    def __init__(self, token_type: str | Enum | None = None):
         self.token_type = self._parse_token_type(token_type)
         # at this point token_type is either None or a string
 
@@ -52,7 +52,7 @@ class URLTokenizer:
         )
 
     @staticmethod
-    def _parse_token_type(token_type: Optional[Union[str, Enum]]) -> Optional[str]:
+    def _parse_token_type(token_type: str | Enum | None) -> str | None:
         if isinstance(token_type, str):
             token_type = token_type.strip().lower()
         elif isinstance(token_type, Enum):
@@ -63,7 +63,7 @@ class URLTokenizer:
         return token_type
 
     @staticmethod
-    def _get_token_config(settings_: dict, token_type: Optional[str]) -> dict:
+    def _get_token_config(settings_: dict, token_type: str | None) -> dict:
         TOKEN_CONFIG = settings_.get("TOKEN_CONFIG", {})
 
         # avoid empty token_type
@@ -108,7 +108,7 @@ class URLTokenizer:
         return urlsafe_base64_encode(force_bytes(s))
 
     @staticmethod
-    def decode(s: Union[bytes, str]) -> str:
+    def decode(s: bytes | str) -> str:
         return force_str(urlsafe_base64_decode(s))
 
     # main methods
@@ -116,12 +116,12 @@ class URLTokenizer:
     def generate_tokenized_link(
         self,
         user,
-        path: Optional[str] = None,
-        domain: Optional[str] = None,
-        protocol: Optional[str] = None,
-        port: Optional[str] = None,
-        email_subject: Optional[str] = None,
-        fail_silently: Optional[bool] = None,
+        path: str | None = None,
+        domain: str | None = None,
+        protocol: str | None = None,
+        port: str | None = None,
+        email_subject: str | None = None,
+        fail_silently: bool | None = None,
         send_email: bool = False,
     ):
         path = path or self.path
@@ -182,12 +182,12 @@ class URLTokenizer:
     def bulk_generate_tokenized_link(
         self,
         users: Iterable,
-        path: Optional[str] = None,
-        domain: Optional[str] = None,
-        protocol: Optional[str] = None,
-        port: Optional[str] = None,
-        email_subject: Optional[str] = None,
-        fail_silently: Optional[bool] = None,
+        path: str | None = None,
+        domain: str | None = None,
+        protocol: str | None = None,
+        port: str | None = None,
+        email_subject: str | None = None,
+        fail_silently: bool | None = None,
         send_email: bool = False,
     ):
         if fail_silently is None:
@@ -224,9 +224,7 @@ class URLTokenizer:
 
         return named_tuples
 
-    def check_token(
-        self, uidb64: str, token: str, fail_silently: Optional[bool] = None
-    ):
+    def check_token(self, uidb64: str, token: str, fail_silently: bool | None = None):
         if fail_silently is None:
             fail_silently = self.fail_silently
 
@@ -251,8 +249,8 @@ class URLTokenizer:
     def run_callbacks(
         self,
         user,
-        callback_kwargs: Iterable[dict] = [],
-        fail_silently: Optional[bool] = None,
+        callback_kwargs: Iterable = [],
+        fail_silently: bool | None = None,
     ):
         if fail_silently is None:
             fail_silently = self.fail_silently

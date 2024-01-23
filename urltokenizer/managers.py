@@ -1,5 +1,4 @@
 from enum import Enum
-from typing import Optional, Union
 
 from django.db import models
 from django.contrib.auth import get_user_model
@@ -21,13 +20,13 @@ class URLTokenizerQueryset(models.QuerySet):
 
     def bulk_generate_tokenized_link(
         self,
-        token_type: Optional[Union[str, Enum]] = None,
-        path: Optional[str] = None,
-        domain: Optional[str] = None,
-        protocol: Optional[str] = None,
-        port: Optional[str] = None,
-        email_subject: Optional[str] = None,
-        fail_silently: Optional[bool] = None,
+        token_type: str | Enum | None = None,
+        path: str | None = None,
+        domain: str | None = None,
+        protocol: str | None = None,
+        port: str | None = None,
+        email_subject: str | None = None,
+        fail_silently: bool | None = None,
         send_email: bool = False,
     ):
         tokenizer = URLTokenizer(token_type)

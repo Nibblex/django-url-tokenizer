@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Iterable, Optional, Union
+from typing import Iterable
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ImproperlyConfigured
@@ -18,13 +18,13 @@ class URLTokenizerMixin:
 
     def generate_tokenized_link(
         self,
-        token_type: Optional[Union[str, Enum]] = None,
-        path: Optional[str] = None,
-        domain: Optional[str] = None,
-        protocol: Optional[str] = None,
-        port: Optional[str] = None,
-        email_subject: Optional[str] = None,
-        fail_silently: Optional[bool] = None,
+        token_type: str | Enum | None = None,
+        path: str | None = None,
+        domain: str | None = None,
+        protocol: str | None = None,
+        port: str | None = None,
+        email_subject: str | None = None,
+        fail_silently: bool | None = None,
         send_email: bool = False,
     ):
         tokenizer = URLTokenizer(token_type)
@@ -41,10 +41,10 @@ class URLTokenizerMixin:
 
     def check_token(
         self,
-        token_type: Optional[Union[str, Enum]] = None,
-        token: Optional[str] = None,
-        callback_kwargs: Iterable[dict] = [],
-        fail_silently: Optional[bool] = None,
+        token_type: str | Enum | None = None,
+        token: str | None = None,
+        callback_kwargs: Iterable = [],
+        fail_silently: bool | None = None,
     ):
         tokenizer = URLTokenizer(token_type)
         uidb64 = tokenizer.encode(getattr(self, tokenizer.encoding_field))
