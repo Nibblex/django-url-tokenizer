@@ -33,6 +33,11 @@ class URLToken:
     precondition_failed: bool
     email_sent: bool
 
+    def _replace(self, **kwargs):
+        as_dict = self.__dict__
+        as_dict.update(kwargs)
+        return URLToken(**as_dict)
+
 
 class URLTokenizer:
     def __init__(self, token_type: str | Enum | None = None):
