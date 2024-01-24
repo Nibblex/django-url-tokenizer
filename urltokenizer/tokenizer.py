@@ -1,5 +1,5 @@
 import threading
-from collections import namedtuple
+from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Iterable
 
@@ -20,6 +20,18 @@ SETTINGS = getattr(settings, "URL_TOKENIZER_SETTINGS", {})
 
 def from_config(config: dict, key: str, default: Any) -> Any:
     return config.get(key, SETTINGS.get(key.upper(), default))
+
+
+@dataclass
+class URLToken:
+    user: object
+    email: str
+    name: str
+    uidb64: str
+    token: str
+    link: str
+    precondition_failed: bool
+    email_sent: bool
 
 
 class URLTokenizer:
@@ -133,19 +145,6 @@ class URLTokenizer:
         if fail_silently is None:
             fail_silently = self.fail_silently
 
-        named_tuple = namedtuple(
-            "URLToken",
-            [
-                "user",
-                "email",
-                "name",
-                "uidb64",
-                "token",
-                "link",
-                "precondition_failed",
-                "email_sent",
-            ],
-        )
         email = getattr(user, self.email_field)
         name = getattr(user, getattr(user, "NAME_FIELD", ""), "")
 
@@ -159,7 +158,7 @@ class URLTokenizer:
                 check = False
 
             if not check:
-                return named_tuple(user, email, name, "", "", "", True, False)
+                return URLToken(user, email, name, "", "", "", True, False)
 
         uidb64 = self.encode(getattr(user, self.encoding_field))
         token = self._token_generator.make_token(user)
@@ -175,9 +174,7 @@ class URLTokenizer:
                 fail_silently=fail_silently,
             )
 
-        return named_tuple(
-            user, email, name, uidb64, token, link, False, email_sent > 0
-        )
+        return URLToken(user, email, name, uidb64, token, link, False, email_sent > 0)
 
     def bulk_generate_tokenized_link(
         self,
@@ -193,7 +190,7 @@ class URLTokenizer:
         if fail_silently is None:
             fail_silently = self.fail_silently
 
-        named_tuples, threads = [], []
+        url_tokens, threads = [], []
 
         # Define a helper function to execute generate_tokenized_link for each user
         def generate_link(user):
@@ -207,7 +204,7 @@ class URLTokenizer:
                 fail_silently=fail_silently,
                 send_email=send_email,
             )
-            named_tuples.append(named_tuple)
+            url_tokens.append(named_tuple)
 
         # Create a thread for each user
         for user in users:
@@ -222,7 +219,7 @@ class URLTokenizer:
         for thread in threads:
             thread.join()
 
-        return named_tuples
+        return url_tokens
 
     def check_token(self, uidb64: str, token: str, fail_silently: bool | None = None):
         if fail_silently is None:
