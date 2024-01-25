@@ -22,4 +22,10 @@ class URLTokenizerError(Exception):
         self.code = code
         self.context = context or {}
 
-        super().__init__(self.message, code)
+    def __repr__(self):
+        return "URLTokenizerError({}, code={}, context={})".format(
+            self.message, self.code, self.context
+        )
+
+    def __str__(self):
+        return self.message
