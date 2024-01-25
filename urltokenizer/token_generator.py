@@ -89,10 +89,10 @@ class TokenGenerator:
                     return False
 
                 raise URLTokenizerError(
-                    ErrorCodes.check_precondition_execution_error.value.format(
-                        pred=pred
-                    ),
+                    ErrorCodes.check_precondition_execution_error.value,
                     ErrorCodes.check_precondition_execution_error.name,
+                    context=dict(exception=e),
+                    pred=pred,
                 ) from e
 
         return True
@@ -123,8 +123,9 @@ class TokenGenerator:
                     continue
 
                 raise URLTokenizerError(
-                    ErrorCodes.invalid_method.value.format(method_name=method_name),
+                    ErrorCodes.invalid_method.value,
                     ErrorCodes.invalid_method.name,
+                    method_name=method_name,
                 )
 
             # Get the kwargs for the callback method
@@ -142,10 +143,10 @@ class TokenGenerator:
             except Exception as e:
                 if not fail_silently:
                     raise URLTokenizerError(
-                        ErrorCodes.callback_execution_error.value.format(
-                            callback=method_name
-                        ),
+                        ErrorCodes.callback_execution_error.value,
                         ErrorCodes.callback_execution_error.name,
+                        context=dict(exception=e),
+                        callback=method_name,
                     ) from e
 
                 continue

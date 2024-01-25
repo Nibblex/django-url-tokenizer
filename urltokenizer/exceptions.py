@@ -17,7 +17,7 @@ class ErrorCodes(Enum):
 
 
 class URLTokenizerError(Exception):
-    def __init__(self, message, code=None, *args, **kwargs):
-        self.message = message
+    def __init__(self, message, code=None, context=None, *args, **kwargs):
+        self.message = message.format(*args, **kwargs)
         self.code = code
-        super().__init__(message)
+        self.context = context

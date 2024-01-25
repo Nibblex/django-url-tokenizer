@@ -27,11 +27,12 @@ class URLToken:
     user: object
     email: str
     name: str
-    uidb64: str
-    token: str
-    link: str
-    precondition_failed: bool
-    email_sent: bool
+    uidb64: str = ""
+    token: str = ""
+    link: str = ""
+    precondition_failed: bool = False
+    email_sent: bool = False
+    exception: URLTokenizerError | None = None
 
     def _replace(self, **kwargs):
         for key, value in kwargs.items():
@@ -61,6 +62,7 @@ class URLTokenizer:
         # email
         self.email_enabled = from_config(token_config, "email_enabled", False)
         self.email_field = from_config(token_config, "email_field", "email")
+        self.name_field = from_config(token_config, "name_field", "name")
         self.email_subject = from_config(
             token_config, "email_subject", "link generated with django-url-tokenizer"
         )
@@ -85,7 +87,7 @@ class URLTokenizer:
         TOKEN_CONFIG = settings_.get("TOKEN_CONFIG", {})
 
         # avoid empty token_type
-        if any((x.strip() == "" for x in TOKEN_CONFIG.keys())):
+        if any((key.strip() == "" for key in TOKEN_CONFIG.keys())):
             raise ImproperlyConfigured(
                 _("TOKEN_CONFIG cannot contain blank 'token_type'.")
             )
@@ -98,8 +100,9 @@ class URLTokenizer:
 
         if token_config is None and validate_token_type:
             raise URLTokenizerError(
-                ErrorCodes.invalid_token_type.value.format(token_type=token_type),
+                ErrorCodes.invalid_token_type.value,
                 ErrorCodes.invalid_token_type.name,
+                token_type=token_type,
             )
 
         return token_config or TOKEN_CONFIG.get("default", {})
@@ -155,24 +158,27 @@ class URLTokenizer:
             fail_silently = self.fail_silently
 
         email = getattr(user, self.email_field)
-        name = getattr(user, getattr(user, "NAME_FIELD", ""), "")
+        name = getattr(user, self.name_field, "")
+        url_token = URLToken(user, email, name)
 
         for pred in self.send_preconditions:
             try:
                 check = pred(user)
             except Exception as e:
-                if not fail_silently:
-                    raise URLTokenizerError(
-                        ErrorCodes.send_precondition_execution_error.value.format(
-                            pred=pred
-                        ),
-                        ErrorCodes.send_precondition_execution_error.name,
-                    ) from e
+                url_token.exception = URLTokenizerError(
+                    ErrorCodes.send_precondition_execution_error.value,
+                    ErrorCodes.send_precondition_execution_error.name,
+                    context=dict(exception=e),
+                    pred=pred,
+                )
 
-                check = False
+                if fail_silently:
+                    return url_token
+
+                raise url_token.exception from e
 
             if not check:
-                return URLToken(user, email, name, "", "", "", True, False)
+                return url_token._replace(precondition_failed=True)
 
         uidb64 = self.encode(getattr(user, self.encoding_field))
         token = self._token_generator.make_token(user)
@@ -188,7 +194,9 @@ class URLTokenizer:
                 fail_silently=fail_silently,
             )
 
-        return URLToken(user, email, name, uidb64, token, link, False, email_sent > 0)
+        return url_token._replace(
+            uidb64=uidb64, token=token, link=link, email_sent=email_sent > 0
+        )
 
     def bulk_generate_tokenized_link(
         self,
