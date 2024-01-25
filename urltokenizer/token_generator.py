@@ -4,13 +4,8 @@ from datetime import datetime
 from django.conf import settings
 from django.utils.crypto import constant_time_compare, salted_hmac
 from django.utils.http import base36_to_int, int_to_base36
-from django.utils.translation import gettext_lazy as _
 
-from .exceptions import (
-    InvalidMethodError,
-    CheckPreconditionExecutionError,
-    CallbackExecutionError,
-)
+from .exceptions import URLTokenizerError, ErrorCodes
 from .utils import str_import
 
 
@@ -93,7 +88,12 @@ class TokenGenerator:
                 if fail_silently:
                     return False
 
-                raise CheckPreconditionExecutionError(e)
+                raise URLTokenizerError(
+                    ErrorCodes.check_precondition_execution_error.value.format(
+                        pred=pred
+                    ),
+                    ErrorCodes.check_precondition_execution_error.name,
+                ) from e
 
         return True
 
@@ -122,8 +122,9 @@ class TokenGenerator:
                 if fail_silently:
                     continue
 
-                raise InvalidMethodError(
-                    _("callback method '%(method_name)s' does not exist on user model"),
+                raise URLTokenizerError(
+                    ErrorCodes.invalid_method.value.format(method_name=method_name),
+                    ErrorCodes.invalid_method.name,
                 )
 
             # Get the kwargs for the callback method
@@ -140,7 +141,12 @@ class TokenGenerator:
                 callback_return = method(**kwargs)
             except Exception as e:
                 if not fail_silently:
-                    raise CallbackExecutionError(e)
+                    raise URLTokenizerError(
+                        ErrorCodes.callback_execution_error.value.format(
+                            callback=method_name
+                        ),
+                        ErrorCodes.callback_execution_error.name,
+                    ) from e
 
                 continue
 

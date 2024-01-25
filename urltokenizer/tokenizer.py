@@ -11,7 +11,7 @@ from django.utils.encoding import force_bytes, force_str, DjangoUnicodeDecodeErr
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.translation import gettext_lazy as _
 
-from .exceptions import InvalidTokenTypeError, SendPreconditionExecutionError
+from .exceptions import URLTokenizerError, ErrorCodes
 from .token_generator import TokenGenerator
 from .utils import str_import
 
@@ -34,9 +34,10 @@ class URLToken:
     email_sent: bool
 
     def _replace(self, **kwargs):
-        as_dict = self.__dict__
-        as_dict.update(kwargs)
-        return URLToken(**as_dict)
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+        return self
 
 
 class URLTokenizer:
@@ -75,7 +76,7 @@ class URLTokenizer:
         elif isinstance(token_type, Enum):
             token_type = token_type.value.strip().lower()
         elif token_type is not None:
-            raise ValueError(_("token_type must be either a string or Enum"))
+            raise ValueError(_("'token_type' must be either a string or Enum"))
 
         return token_type
 
@@ -86,7 +87,7 @@ class URLTokenizer:
         # avoid empty token_type
         if any((x.strip() == "" for x in TOKEN_CONFIG.keys())):
             raise ImproperlyConfigured(
-                _("TOKEN_CONFIG cannot contain blank token_type.")
+                _("TOKEN_CONFIG cannot contain blank 'token_type'.")
             )
 
         if token_type is None:
@@ -96,7 +97,10 @@ class URLTokenizer:
         validate_token_type = settings_.get("VALIDATE_TOKEN_TYPE", True)
 
         if token_config is None and validate_token_type:
-            raise InvalidTokenTypeError(_(f"invalid token type: {token_type}"))
+            raise URLTokenizerError(
+                ErrorCodes.invalid_token_type.value.format(token_type=token_type),
+                ErrorCodes.invalid_token_type.name,
+            )
 
         return token_config or TOKEN_CONFIG.get("default", {})
 
@@ -158,7 +162,12 @@ class URLTokenizer:
                 check = pred(user)
             except Exception as e:
                 if not fail_silently:
-                    raise SendPreconditionExecutionError(e)
+                    raise URLTokenizerError(
+                        ErrorCodes.send_precondition_execution_error.value.format(
+                            pred=pred
+                        ),
+                        ErrorCodes.send_precondition_execution_error.name,
+                    ) from e
 
                 check = False
 

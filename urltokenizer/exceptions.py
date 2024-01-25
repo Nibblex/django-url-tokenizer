@@ -1,45 +1,23 @@
 from enum import Enum, unique
 
+from django.utils.translation import gettext_lazy as _
+
 
 @unique
 class ErrorCodes(Enum):
-    invalid_token_type = "invalid_token_type"
-    invalid_method = "invalid_method"
-    send_precondition_execution_error = "send_precondition_execution_error"
-    check_precondition_execution_error = "check_precondition_execution_error"
-    callback_execution_error = "callback_execution_error"
+    invalid_token_type = _("There is no token type with name '{token_type}'")
+    invalid_method = _("User model has no method '{method_name}'")
+    send_precondition_execution_error = _(
+        "Error during send precondition '{pred}' execution"
+    )
+    check_precondition_execution_error = _(
+        "Error during check precondition '{pred}' execution"
+    )
+    callback_execution_error = _("Error during callback '{callback}' execution")
 
 
-class InvalidTokenTypeError(Exception):
-    def __init__(self, message):
+class URLTokenizerError(Exception):
+    def __init__(self, message, code=None, *args, **kwargs):
         self.message = message
-        self.code = ErrorCodes.invalid_token_type.value
-        super().__init__(message)
-
-
-class InvalidMethodError(Exception):
-    def __init__(self, message):
-        self.message = message
-        self.code = ErrorCodes.invalid_method.value
-        super().__init__(message)
-
-
-class SendPreconditionExecutionError(Exception):
-    def __init__(self, message):
-        self.message = message
-        self.code = ErrorCodes.send_precondition_execution_error.value
-        super().__init__(message)
-
-
-class CheckPreconditionExecutionError(Exception):
-    def __init__(self, message):
-        self.message = message
-        self.code = ErrorCodes.check_precondition_execution_error.value
-        super().__init__(message)
-
-
-class CallbackExecutionError(Exception):
-    def __init__(self, message):
-        self.message = message
-        self.code = ErrorCodes.callback_execution_error.value
+        self.code = code
         super().__init__(message)
