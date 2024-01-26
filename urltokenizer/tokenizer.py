@@ -1,6 +1,7 @@
 import threading
 from dataclasses import dataclass
 from enum import Enum
+from sms import send_sms
 from typing import Any, Iterable
 
 from django.conf import settings
