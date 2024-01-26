@@ -4,7 +4,7 @@ from .enums import Channel
 
 
 class Log(models.Model):
-    token_type = models.CharField(max_length=255)
+    token_type = models.CharField(max_length=255, null=True)
     timestamp = models.DateTimeField(null=True)
     uidb64 = models.CharField(max_length=255, null=True)
     hash = models.CharField(max_length=255, null=True)
