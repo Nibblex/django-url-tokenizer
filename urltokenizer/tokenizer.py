@@ -200,7 +200,7 @@ class URLTokenizer:
 
         email = str(getattr(user, self.email_field))
         name = str(getattr(user, self.name_field, ""))
-        phone = str(getattr(user, self.phone_field, ""))
+        phone = str(getattr(user, self.phone_field, "") or "")
         url_token = URLToken(self.token_type, user, email, name, phone, channel=channel)
 
         for pred in self.send_preconditions:
