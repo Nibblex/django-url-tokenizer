@@ -51,6 +51,7 @@ class URLToken:
     precondition_failed: bool = False
     channel: Channel | None = None
     sent: bool = False
+    logged: bool = False
     exception: URLTokenizerError | None = None
 
     def _replace(self, **kwargs):
@@ -61,7 +62,7 @@ class URLToken:
 
 
 def create_log(url_token: URLToken) -> Log:
-    return Log.objects.create(
+    log = Log.objects.create(
         token_type=url_token.type,
         timestamp=url_token.timestamp,
         uidb64=url_token.uidb64,
@@ -73,6 +74,9 @@ def create_log(url_token: URLToken) -> Log:
         precondition_failed=url_token.precondition_failed,
         sent=url_token.sent,
     )
+
+    url_token.logged = True
+    return log
 
 
 class URLTokenizer:
@@ -86,6 +90,7 @@ class URLTokenizer:
         # token
         self.encoding_field = from_config(token_config, "encoding_field", "pk")
         self.fail_silently = from_config(token_config, "fail_silently", False)
+        self.logging_enabled = from_config(token_config, "logging_enabled", False)
 
         # url
         self.path = from_config(token_config, "path", "").strip("/")
@@ -250,8 +255,9 @@ class URLTokenizer:
         url_token = url_token._replace(
             uidb64=uidb64, token=token, link=link, sent=sent > 0
         )
-        with suppress(ProgrammingError):
-            create_log(url_token)
+        if self.logging_enabled:
+            with suppress(ProgrammingError):
+                create_log(url_token)
 
         return url_token
 
