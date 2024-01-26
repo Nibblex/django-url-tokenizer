@@ -1,3 +1,4 @@
+import hashlib
 import threading
 from dataclasses import dataclass
 from enum import Enum
@@ -33,6 +34,7 @@ class URLToken:
     uidb64: str = ""
     token: str = ""
     link: str = ""
+    hash: str = ""
     precondition_failed: bool = False
     channel: Channel | None = None
     sent: bool = False
@@ -194,6 +196,7 @@ class URLTokenizer:
 
         uidb64 = self.encode(getattr(user, self.encoding_field))
         token = self._token_generator.make_token(user)
+        url_token.hash = hashlib.sha256(force_bytes(uidb64 + token)).hexdigest()
         link = f"{protocol}://{domain}:{port}/{self.path}?uid={uidb64}&key={token}"
         if channel:
             link += f"&channel={channel}"
