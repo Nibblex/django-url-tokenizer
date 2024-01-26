@@ -88,6 +88,7 @@ class URLTokenizer:
         self.encoding_field = from_config(token_config, "encoding_field", "pk")
         self.fail_silently = from_config(token_config, "fail_silently", False)
         self.logging_enabled = from_config(token_config, "logging_enabled", False)
+        self.check_logs = from_config(token_config, "check_logs", False)
 
         # url
         self.path = from_config(token_config, "path", "").strip("/")
@@ -320,6 +321,21 @@ class URLTokenizer:
             user, token, fail_silently=fail_silently
         ):
             return None
+
+        if not self.check_logs:
+            return user
+
+        hash = hashlib.sha256(force_bytes(uidb64 + token)).hexdigest()
+        try:
+            log = Log.objects.filter(hash=hash).first()
+        except ProgrammingError:
+            return user
+
+        if not log or log.checked:
+            return None
+
+        log.checked = True
+        log.save(update_fields=["checked"])
 
         return user
 
