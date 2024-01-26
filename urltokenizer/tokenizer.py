@@ -168,9 +168,9 @@ class URLTokenizer:
         if fail_silently is None:
             fail_silently = self.fail_silently
 
-        email = getattr(user, self.email_field)
-        name = getattr(user, self.name_field, "")
-        phone = getattr(user, self.phone_field, "")
+        email = str(getattr(user, self.email_field))
+        name = str(getattr(user, self.name_field, ""))
+        phone = str(getattr(user, self.phone_field, ""))
         url_token = URLToken(user, email, name, phone, channel=channel)
 
         for pred in self.send_preconditions:
