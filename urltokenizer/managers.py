@@ -6,7 +6,6 @@ from django.core.exceptions import ImproperlyConfigured
 from django.utils.translation import gettext_lazy as _
 
 from .enums import Channel
-from .tokenizer import URLTokenizer
 
 
 class URLTokenizerQueryset(models.QuerySet):
@@ -30,6 +29,8 @@ class URLTokenizerQueryset(models.QuerySet):
         email_subject: str | None = None,
         fail_silently: bool | None = None,
     ):
+        from .tokenizer import URLTokenizer
+
         tokenizer = URLTokenizer(token_type)
         return tokenizer.bulk_generate_tokenized_link(
             self,

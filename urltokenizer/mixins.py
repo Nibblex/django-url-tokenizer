@@ -6,7 +6,6 @@ from django.core.exceptions import ImproperlyConfigured
 from django.utils.translation import gettext_lazy as _
 
 from .enums import Channel
-from .tokenizer import URLTokenizer
 
 
 class URLTokenizerMixin:
@@ -28,6 +27,8 @@ class URLTokenizerMixin:
         email_subject: str | None = None,
         fail_silently: bool | None = None,
     ):
+        from .tokenizer import URLTokenizer
+
         tokenizer = URLTokenizer(token_type)
         return tokenizer.generate_tokenized_link(
             self,
@@ -47,6 +48,8 @@ class URLTokenizerMixin:
         callback_kwargs: Iterable = [],
         fail_silently: bool | None = None,
     ):
+        from .tokenizer import URLTokenizer
+
         tokenizer = URLTokenizer(token_type)
         uidb64 = tokenizer.encode(getattr(self, tokenizer.encoding_field))
 

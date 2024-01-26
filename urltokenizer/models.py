@@ -1,11 +1,15 @@
+from django.contrib.auth import get_user_model
 from django.db import models
 
 from .enums import Channel
 
+User = get_user_model()
+
 
 class Log(models.Model):
-    token_type = models.CharField(max_length=255, null=True)
     timestamp = models.DateTimeField(null=True)
+    token_type = models.CharField(max_length=255, null=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
     uidb64 = models.CharField(max_length=255, null=True)
     hash = models.CharField(max_length=255, null=True)
     email = models.EmailField(null=True)

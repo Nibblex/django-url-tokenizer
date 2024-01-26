@@ -20,9 +20,7 @@ from .enums import Channel
 from .exceptions import URLTokenizerError, ErrorCodes
 from .models import Log
 from .token_generator import TokenGenerator
-from .utils import str_import
-
-SETTINGS = getattr(settings, "URL_TOKENIZER_SETTINGS", {})
+from .utils import SETTINGS, str_import, from_config
 
 try:
     from sms import send_sms
@@ -30,10 +28,6 @@ try:
     HAS_SMS = True
 except ImportError:
     HAS_SMS = False
-
-
-def from_config(config: dict, key: str, default: Any) -> Any:
-    return config.get(key, SETTINGS.get(key.upper(), default))
 
 
 @dataclass
@@ -54,29 +48,32 @@ class URLToken:
     logged: bool = False
     exception: URLTokenizerError | None = None
 
-    def _replace(self, **kwargs):
+    def _(self, **kwargs):
         for key, value in kwargs.items():
             setattr(self, key, value)
 
         return self
 
+    def log(self) -> Log | None:
+        with suppress(ProgrammingError):
+            log = Log.objects.create(
+                timestamp=self.timestamp,
+                token_type=self.type,
+                user=self.user,
+                uidb64=self.uidb64,
+                hash=self.hash,
+                email=self.email,
+                name=self.name,
+                phone=self.phone,
+                channel=self.channel,
+                precondition_failed=self.precondition_failed,
+                sent=self.sent,
+            )
 
-def create_log(url_token: URLToken) -> Log:
-    log = Log.objects.create(
-        token_type=url_token.type,
-        timestamp=url_token.timestamp,
-        uidb64=url_token.uidb64,
-        hash=url_token.hash,
-        email=url_token.email,
-        name=url_token.name,
-        phone=url_token.phone,
-        channel=url_token.channel,
-        precondition_failed=url_token.precondition_failed,
-        sent=url_token.sent,
-    )
+            self.logged = True
+            return log
 
-    url_token.logged = True
-    return log
+        return None
 
 
 class URLTokenizer:
@@ -225,7 +222,7 @@ class URLTokenizer:
                 raise url_token.exception from e
 
             if not check:
-                return url_token._replace(precondition_failed=True)
+                return url_token._(precondition_failed=True)
 
         uidb64 = self.encode(getattr(user, self.encoding_field))
         token = self._token_generator.make_token(user)
@@ -252,12 +249,10 @@ class URLTokenizer:
                     fail_silently=fail_silently,
                 )
 
-        url_token = url_token._replace(
-            uidb64=uidb64, token=token, link=link, sent=sent > 0
-        )
+        url_token = url_token._(uidb64=uidb64, token=token, link=link, sent=sent > 0)
+
         if self.logging_enabled:
-            with suppress(ProgrammingError):
-                create_log(url_token)
+            url_token.log()
 
         return url_token
 
