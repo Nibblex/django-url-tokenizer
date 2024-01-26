@@ -309,35 +309,38 @@ class URLTokenizer:
         try:
             decoded_attr = self.decode(uidb64)
         except DjangoUnicodeDecodeError:
-            return None
+            return None, None
 
         user = self.user_model.objects.filter(
             **{self.encoding_field: decoded_attr}
         ).first()
         if not user:
-            return None
+            return None, None
 
         if not self._token_generator.check_token(
             user, token, fail_silently=fail_silently
         ):
-            return None
+            return None, None
 
         if not self.check_logs:
-            return user
+            return user, None
 
         hash = hashlib.sha256(force_bytes(uidb64 + token)).hexdigest()
         try:
             log = Log.objects.filter(hash=hash).first()
         except ProgrammingError:
-            return user
+            return user, None
 
-        if not log or log.checked:
-            return None
+        if not log:
+            return None, None
+
+        if log.checked:
+            return None, log
 
         log.checked = True
         log.save(update_fields=["checked"])
 
-        return user
+        return user, log
 
     def run_callbacks(
         self,
