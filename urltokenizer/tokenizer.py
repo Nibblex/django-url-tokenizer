@@ -1,6 +1,8 @@
 import hashlib
 import threading
+from contextlib import suppress
 from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum
 from typing import Any, Iterable
 
@@ -8,12 +10,15 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ImproperlyConfigured
 from django.core.mail import send_mail
+from django.db.utils import ProgrammingError
+from django.utils import timezone
 from django.utils.encoding import force_bytes, force_str, DjangoUnicodeDecodeError
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.translation import gettext_lazy as _
 
 from .enums import Channel
 from .exceptions import URLTokenizerError, ErrorCodes
+from .models import Log
 from .token_generator import TokenGenerator
 from .utils import str_import
 
@@ -33,6 +38,7 @@ def from_config(config: dict, key: str, default: Any) -> Any:
 
 @dataclass
 class URLToken:
+    type: str | None
     user: object
     email: str
     name: str
@@ -41,6 +47,7 @@ class URLToken:
     token: str = ""
     link: str = ""
     hash: str = ""
+    timestamp: datetime = timezone.now()
     precondition_failed: bool = False
     channel: Channel | None = None
     sent: bool = False
@@ -51,6 +58,21 @@ class URLToken:
             setattr(self, key, value)
 
         return self
+
+
+def create_log(url_token: URLToken) -> Log:
+    return Log.objects.create(
+        token_type=url_token.type,
+        timestamp=url_token.timestamp,
+        uidb64=url_token.uidb64,
+        hash=url_token.hash,
+        email=url_token.email,
+        name=url_token.name,
+        phone=url_token.phone,
+        channel=url_token.channel,
+        precondition_failed=url_token.precondition_failed,
+        sent=url_token.sent,
+    )
 
 
 class URLTokenizer:
@@ -179,7 +201,7 @@ class URLTokenizer:
         email = str(getattr(user, self.email_field))
         name = str(getattr(user, self.name_field, ""))
         phone = str(getattr(user, self.phone_field, ""))
-        url_token = URLToken(user, email, name, phone, channel=channel)
+        url_token = URLToken(self.token_type, user, email, name, phone, channel=channel)
 
         for pred in self.send_preconditions:
             try:
@@ -225,7 +247,13 @@ class URLTokenizer:
                     fail_silently=fail_silently,
                 )
 
-        return url_token._replace(uidb64=uidb64, token=token, link=link, sent=sent > 0)
+        url_token = url_token._replace(
+            uidb64=uidb64, token=token, link=link, sent=sent > 0
+        )
+        with suppress(ProgrammingError):
+            create_log(url_token)
+
+        return url_token
 
     def bulk_generate_tokenized_link(
         self,
