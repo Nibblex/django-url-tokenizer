@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ImproperlyConfigured
 from django.utils.translation import gettext_lazy as _
 
+from .enums import Channel
 from .tokenizer import URLTokenizer
 
 
@@ -23,9 +24,9 @@ class URLTokenizerMixin:
         domain: str | None = None,
         protocol: str | None = None,
         port: str | None = None,
+        channel: Channel | None = None,
         email_subject: str | None = None,
         fail_silently: bool | None = None,
-        send_email: bool = False,
     ):
         tokenizer = URLTokenizer(token_type)
         return tokenizer.generate_tokenized_link(
@@ -34,9 +35,9 @@ class URLTokenizerMixin:
             domain=domain,
             protocol=protocol,
             port=port,
+            channel=channel,
             email_subject=email_subject,
             fail_silently=fail_silently,
-            send_email=send_email,
         )
 
     def check_token(
