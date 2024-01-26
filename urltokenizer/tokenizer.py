@@ -194,7 +194,9 @@ class URLTokenizer:
 
         uidb64 = self.encode(getattr(user, self.encoding_field))
         token = self._token_generator.make_token(user)
-        link = f"{protocol}://{domain}:{port}/{self.path}?uid={uidb64}&key={token}&channel={channel}"
+        link = f"{protocol}://{domain}:{port}/{self.path}?uid={uidb64}&key={token}"
+        if channel:
+            link += f"&channel={channel}"
 
         sent = False
         if self.send_enabled:
