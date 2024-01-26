@@ -63,7 +63,7 @@ class URLTokenizer:
         self.protocol = from_config(token_config, "protocol", "http")
         self.port = from_config(token_config, "port", "80")
 
-        # Sending
+        # sending
         self.send_enabled = from_config(token_config, "send_enabled", False)
         self.channel = from_config(token_config, "channel", None)
         self.send_preconditions = str_import(
@@ -194,7 +194,7 @@ class URLTokenizer:
 
         uidb64 = self.encode(getattr(user, self.encoding_field))
         token = self._token_generator.make_token(user)
-        link = f"{protocol}://{domain}:{port}/{self.path}?uid={uidb64}&key={token}"
+        link = f"{protocol}://{domain}:{port}/{self.path}?uid={uidb64}&key={token}&channel={channel}"
 
         sent = False
         if self.send_enabled:
