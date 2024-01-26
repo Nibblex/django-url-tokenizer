@@ -2,7 +2,6 @@ import hashlib
 import threading
 from dataclasses import dataclass
 from enum import Enum
-from sms import send_sms
 from typing import Any, Iterable
 
 from django.conf import settings
@@ -19,6 +18,13 @@ from .token_generator import TokenGenerator
 from .utils import str_import
 
 SETTINGS = getattr(settings, "URL_TOKENIZER_SETTINGS", {})
+
+try:
+    from sms import send_sms
+
+    HAS_SMS = True
+except ImportError:
+    HAS_SMS = False
 
 
 def from_config(config: dict, key: str, default: Any) -> Any:
@@ -201,7 +207,7 @@ class URLTokenizer:
         if channel:
             link += f"&channel={channel}"
 
-        sent = False
+        sent = 0
         if self.send_enabled:
             if channel == Channel.EMAIL.value:
                 sent = send_mail(
@@ -211,7 +217,7 @@ class URLTokenizer:
                     recipient_list=[email],
                     fail_silently=fail_silently,
                 )
-            elif channel == Channel.SMS.value:
+            elif channel == Channel.SMS.value and HAS_SMS:
                 sent = send_sms(
                     body=link,
                     originator=settings.DEFAULT_FROM_SMS,
