@@ -1,9 +1,6 @@
-from enum import Enum, unique
+from django.db.models import TextChoices
 
 
-@unique
-class Channel(Enum):
-    """Enumeration of the different channels that can be used to send links."""
-
-    EMAIL = "email"
-    SMS = "sms"
+class Channel(TextChoices):
+    EMAIL = "email", "Email"
+    SMS = "sms", "SMS"

@@ -231,7 +231,7 @@ class URLTokenizer:
 
         sent = 0
         if self.send_enabled:
-            if channel == Channel.EMAIL.value:
+            if channel == Channel.EMAIL:
                 sent = send_mail(
                     subject=email_subject,
                     message=link,
@@ -239,7 +239,7 @@ class URLTokenizer:
                     recipient_list=[email],
                     fail_silently=fail_silently,
                 )
-            elif channel == Channel.SMS.value and HAS_SMS:
+            elif channel == Channel.SMS and HAS_SMS:
                 sent = send_sms(
                     body=link,
                     originator=settings.DEFAULT_FROM_SMS,
