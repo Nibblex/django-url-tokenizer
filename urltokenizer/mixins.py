@@ -9,6 +9,11 @@ from .enums import Channel
 
 
 class URLTokenizerMixin:
+    @property
+    def last_channel(self):
+        log = self.log_set.last()
+        return log.channel if log else None
+
     def __init__(self, *args, **kwargs):
         # Check if the model is the auth user model
         if self.__class__ != get_user_model():
