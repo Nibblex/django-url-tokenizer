@@ -209,7 +209,7 @@ class URLTokenizer:
             elif channel == Channel.SMS.value:
                 sent = send_sms(
                     body=link,
-                    originator=settings.DEFAULT_FROM_EMAIL,
+                    originator=settings.DEFAULT_FROM_SMS,
                     recipients=[phone],
                     fail_silently=fail_silently,
                 )
