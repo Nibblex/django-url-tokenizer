@@ -12,6 +12,7 @@ from django.utils.encoding import force_bytes, force_str, DjangoUnicodeDecodeErr
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.translation import gettext_lazy as _
 
+from .enums import Channel
 from .exceptions import URLTokenizerError, ErrorCodes
 from .token_generator import TokenGenerator
 from .utils import str_import
@@ -28,11 +29,13 @@ class URLToken:
     user: object
     email: str
     name: str
+    phone: str = ""
     uidb64: str = ""
     token: str = ""
     link: str = ""
     precondition_failed: bool = False
-    email_sent: bool = False
+    channel: Channel | None = None
+    sent: bool = False
     exception: URLTokenizerError | None = None
 
     def _replace(self, **kwargs):
@@ -60,17 +63,23 @@ class URLTokenizer:
         self.protocol = from_config(token_config, "protocol", "http")
         self.port = from_config(token_config, "port", "80")
 
+        # Sending
+        self.send_enabled = from_config(token_config, "send_enabled", False)
+        self.channel = from_config(token_config, "channel", None)
+        self.send_preconditions = str_import(
+            SETTINGS.get("SEND_PRECONDITIONS", [])
+            + token_config.get("send_preconditions", [])
+        )
+
         # email
-        self.email_enabled = from_config(token_config, "email_enabled", False)
         self.email_field = from_config(token_config, "email_field", "email")
         self.name_field = from_config(token_config, "name_field", "name")
         self.email_subject = from_config(
             token_config, "email_subject", "link generated with django-url-tokenizer"
         )
-        self.send_preconditions = str_import(
-            SETTINGS.get("SEND_PRECONDITIONS", [])
-            + token_config.get("send_preconditions", [])
-        )
+
+        # sms
+        self.phone_field = from_config(token_config, "phone_field", "phone")
 
     @staticmethod
     def _parse_token_type(token_type: str | Enum | None) -> str | None:
@@ -145,14 +154,15 @@ class URLTokenizer:
         domain: str | None = None,
         protocol: str | None = None,
         port: str | None = None,
+        channel: Channel | None = None,
         email_subject: str | None = None,
         fail_silently: bool | None = None,
-        send_email: bool = False,
     ):
         path = path or self.path
         domain = domain or self.domain
         protocol = protocol or self.protocol
         port = port or self.port
+        channel = channel or self.channel
         email_subject = email_subject or self.email_subject
 
         if fail_silently is None:
@@ -160,7 +170,8 @@ class URLTokenizer:
 
         email = getattr(user, self.email_field)
         name = getattr(user, self.name_field, "")
-        url_token = URLToken(user, email, name)
+        phone = getattr(user, self.phone_field, "")
+        url_token = URLToken(user, email, name, phone, channel=channel)
 
         for pred in self.send_preconditions:
             try:
@@ -185,19 +196,25 @@ class URLTokenizer:
         token = self._token_generator.make_token(user)
         link = f"{protocol}://{domain}:{port}/{self.path}?uid={uidb64}&key={token}"
 
-        email_sent = False
-        if send_email and self.email_enabled:
-            email_sent = send_mail(
-                subject=email_subject,
-                message=link,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[email],
-                fail_silently=fail_silently,
-            )
+        sent = False
+        if self.send_enabled:
+            if channel == Channel.SMS:
+                sent = send_mail(
+                    subject=email_subject,
+                    message=link,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[email],
+                    fail_silently=fail_silently,
+                )
+            elif channel == Channel.EMAIL:
+                sent = send_sms(
+                    _body=link,
+                    originator=settings.DEFAULT_FROM_EMAIL,
+                    recipients=[phone],
+                    fail_silently=fail_silently,
+                )
 
-        return url_token._replace(
-            uidb64=uidb64, token=token, link=link, email_sent=email_sent > 0
-        )
+        return url_token._replace(uidb64=uidb64, token=token, link=link, sent=sent > 0)
 
     def bulk_generate_tokenized_link(
         self,
@@ -206,9 +223,9 @@ class URLTokenizer:
         domain: str | None = None,
         protocol: str | None = None,
         port: str | None = None,
+        channel: Channel | None = None,
         email_subject: str | None = None,
         fail_silently: bool | None = None,
-        send_email: bool = False,
     ):
         if fail_silently is None:
             fail_silently = self.fail_silently
@@ -223,9 +240,9 @@ class URLTokenizer:
                 domain=domain,
                 protocol=protocol,
                 port=port,
+                channel=channel,
                 email_subject=email_subject,
                 fail_silently=fail_silently,
-                send_email=send_email,
             )
             url_tokens.append(named_tuple)
 
