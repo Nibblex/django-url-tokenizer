@@ -68,7 +68,7 @@ class URLToken:
                 channel=self.channel,
                 precondition_failed=self.precondition_failed,
                 sent=self.sent,
-                exception=self.exception.__repr__() if self.exception else None,
+                errors=self.exception.__repr__() if self.exception else None,
             )
 
             self.logged = True
