@@ -218,9 +218,10 @@ class URLTokenizer:
                     pred=pred,
                 )
 
+                if self.logging_enabled:
+                    url_token.log()
+
                 if fail_silently:
-                    if self.logging_enabled:
-                        url_token.log()
                     return url_token
 
                 raise url_token.exception from e
@@ -229,6 +230,7 @@ class URLTokenizer:
                 url_token = url_token._(precondition_failed=True)
                 if self.logging_enabled:
                     url_token.log()
+
                 return url_token
 
         uidb64 = self.encode(getattr(user, self.encoding_field))
