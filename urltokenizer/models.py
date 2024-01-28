@@ -19,4 +19,4 @@ class Log(models.Model):
     precondition_failed = models.BooleanField(default=False)
     sent = models.BooleanField(default=False)
     checked = models.BooleanField(default=False)
-    # errors = models.JSONField(default=dict)
+    errors = models.JSONField(default=dict)

@@ -68,6 +68,7 @@ class URLToken:
                 channel=self.channel,
                 precondition_failed=self.precondition_failed,
                 sent=self.sent,
+                exception=self.exception.__repr__() if self.exception else None,
             )
 
             self.logged = True
@@ -218,16 +219,22 @@ class URLTokenizer:
                 )
 
                 if fail_silently:
+                    if self.logging_enabled:
+                        url_token.log()
                     return url_token
 
                 raise url_token.exception from e
 
             if not check:
-                return url_token._(precondition_failed=True)
+                url_token = url_token._(precondition_failed=True)
+                if self.logging_enabled:
+                    url_token.log()
+                return url_token
 
         uidb64 = self.encode(getattr(user, self.encoding_field))
         token = self._token_generator.make_token(user)
         url_token.hash = hashlib.sha256(force_bytes(uidb64 + token)).hexdigest()
+
         link = f"{protocol}://{domain}:{port}/{self.path}?uid={uidb64}&key={token}"
         if channel:
             link += f"&channel={channel}"
@@ -242,6 +249,7 @@ class URLTokenizer:
                     recipient_list=[email],
                     fail_silently=fail_silently,
                 )
+
             elif channel == Channel.SMS and HAS_SMS:
                 sent = send_sms(
                     body=link,
