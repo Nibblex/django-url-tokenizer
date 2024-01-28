@@ -28,4 +28,9 @@ class URLTokenizerError(Exception):
         )
 
     def __str__(self):
-        return self.message
+        return "{}\n{}".format(
+            self.message,
+            "\n".join(
+                ["  {} = {}".format(key, value) for key, value in self.context.items()]
+            ),
+        )
