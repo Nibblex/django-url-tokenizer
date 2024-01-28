@@ -40,7 +40,7 @@ class URLToken:
     uidb64: str = ""
     token: str = ""
     link: str = ""
-    hash: str = ""
+    hash: str | None = None
     timestamp: datetime = timezone.now()
     precondition_failed: bool = False
     channel: Channel | None = None
