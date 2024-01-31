@@ -1,10 +1,11 @@
 import hashlib
 import threading
+from collections.abc import Iterable
 from contextlib import suppress
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Any, Iterable
+from typing import Any
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -12,15 +13,15 @@ from django.core.exceptions import ImproperlyConfigured
 from django.core.mail import send_mail
 from django.db.utils import ProgrammingError
 from django.utils import timezone
-from django.utils.encoding import force_bytes, force_str, DjangoUnicodeDecodeError
-from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import DjangoUnicodeDecodeError, force_bytes, force_str
+from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.utils.translation import gettext_lazy as _
 
 from .enums import Channel
-from .exceptions import URLTokenizerError, ErrorCodes
+from .exceptions import ErrorCodes, URLTokenizerError
 from .models import Log
 from .token_generator import TokenGenerator
-from .utils import SETTINGS, str_import, from_config
+from .utils import SETTINGS, from_config, str_import
 
 try:
     from sms import send_sms
@@ -131,7 +132,7 @@ class URLTokenizer:
         TOKEN_CONFIG = settings_.get("TOKEN_CONFIG", {})
 
         # avoid empty token_type
-        if any((key.strip() == "" for key in TOKEN_CONFIG.keys())):
+        if any(key.strip() == "" for key in TOKEN_CONFIG.keys()):
             raise ImproperlyConfigured(
                 _("TOKEN_CONFIG cannot contain blank 'token_type'.")
             )

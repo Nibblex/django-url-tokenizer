@@ -1,5 +1,5 @@
+from collections.abc import Iterable
 from enum import Enum
-from typing import Iterable
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ImproperlyConfigured

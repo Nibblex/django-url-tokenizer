@@ -5,7 +5,7 @@ from django.conf import settings
 from django.utils.crypto import constant_time_compare, salted_hmac
 from django.utils.http import base36_to_int, int_to_base36
 
-from .exceptions import URLTokenizerError, ErrorCodes
+from .exceptions import ErrorCodes, URLTokenizerError
 from .utils import str_import
 
 
@@ -181,5 +181,6 @@ class TokenGenerator:
         return f"{user.pk}{timestamp}{attributes}"
 
 
-# A singleton instance to use by default, it only espires with the timestamp (60 by default)
+# A singleton instance to use by default
+# expiration time is 60 seconds by default
 default_token_generator = TokenGenerator()
