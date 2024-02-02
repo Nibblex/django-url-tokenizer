@@ -110,7 +110,9 @@ class URLTokenizer:
         self.email_field = from_config(token_config, "email_field", "email")
         self.name_field = from_config(token_config, "name_field", "name")
         self.email_subject = from_config(
-            token_config, "email_subject", "link generated with django-url-tokenizer"
+            token_config,
+            "email_subject",
+            "link generated with django-url-tokenizer",
         )
 
         # sms
@@ -348,8 +350,8 @@ class URLTokenizer:
         if log.checked:
             return None, log
 
-        log.checked = True
-        log.save(update_fields=["checked"])
+        log.checked_at = timezone.now()
+        log.save(update_fields=["checked_at"])
 
         return user, log
 

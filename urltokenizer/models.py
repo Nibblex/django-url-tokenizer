@@ -18,5 +18,9 @@ class Log(models.Model):
     channel = models.CharField(max_length=255, choices=Channel.choices, null=True)
     precondition_failed = models.BooleanField(default=False)
     sent = models.BooleanField(default=False)
-    checked = models.BooleanField(default=False)
+    checked_at = models.DateTimeField(null=True)
     errors = models.CharField(max_length=255, null=True)
+
+    @property
+    def checked(self):
+        return self.checked_at is not None
