@@ -35,8 +35,8 @@ class SendTokenSerializer(ChannelSerializer):
             "attribute on the view correctly." % view.__class__.__name__
         )
 
-        email_field = from_config(SETTINGS, "email_field")
-        phone_field = from_config(SETTINGS, "phone_field")
+        email_field = from_config(SETTINGS, "email_field", "email")
+        phone_field = from_config(SETTINGS, "phone_field", "phone")
 
         channel = validated_data.get("channel")
         email = validated_data.get("email")
