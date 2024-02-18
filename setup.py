@@ -7,7 +7,7 @@ os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 
 setuptools.setup(
     name="django-url-tokenizer",
-    version="0.0.92",
+    version="0.0.93",
     author="Sergio Rodríguez",
     author_email="srodriguez3441@gmail.com",
     description="""A python package that provides a Django app that allows you to
@@ -26,6 +26,9 @@ setuptools.setup(
     extras_require={
         "sms": [
             "django-sms[twilio]",
+        ],
+        "serializers": [
+            "djangorestframework",
         ],
     },
 )

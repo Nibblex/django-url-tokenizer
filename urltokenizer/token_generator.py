@@ -5,7 +5,7 @@ from django.conf import settings
 from django.utils.crypto import constant_time_compare, salted_hmac
 from django.utils.http import base36_to_int, int_to_base36
 
-from .exceptions import ErrorCodes, URLTokenizerError
+from .exceptions import ErrorCode, URLTokenizerError
 from .utils import str_import
 
 
@@ -31,13 +31,13 @@ class TokenGenerator:
         self.callbacks = callbacks
         self.timeout = timeout
 
-    def _get_secret(self):
+    @property
+    def secret(self):
         return self._secret or settings.SECRET_KEY
 
-    def _set_secret(self, secret):
-        self._secret = secret
-
-    secret = property(_get_secret, _set_secret)
+    @secret.setter
+    def secret(self, value):
+        self._secret = value
 
     @property
     def __now(self):
@@ -63,10 +63,6 @@ class TokenGenerator:
         # Parse the token
         try:
             ts_b36, _ = token.split("-")
-        except ValueError:
-            return False
-
-        try:
             ts = base36_to_int(ts_b36)
         except ValueError:
             return False
@@ -89,8 +85,7 @@ class TokenGenerator:
                     return False
 
                 raise URLTokenizerError(
-                    ErrorCodes.check_precondition_execution_error.value,
-                    ErrorCodes.check_precondition_execution_error.name,
+                    ErrorCode.check_precondition_execution_error,
                     context=dict(exception=e),
                     pred=pred,
                 ) from e
@@ -122,11 +117,7 @@ class TokenGenerator:
                 if fail_silently:
                     continue
 
-                raise URLTokenizerError(
-                    ErrorCodes.invalid_method.value,
-                    ErrorCodes.invalid_method.name,
-                    method_name=method_name,
-                )
+                raise URLTokenizerError(ErrorCode.invalid_method, method_name=method_name)
 
             # Get the kwargs for the callback method
             signature = inspect.signature(method)
@@ -143,9 +134,8 @@ class TokenGenerator:
             except Exception as e:
                 if not fail_silently:
                     raise URLTokenizerError(
-                        ErrorCodes.callback_execution_error.value,
-                        ErrorCodes.callback_execution_error.name,
-                        context=dict(exception=e),
+                        ErrorCode.callback_execution_error,
+                        context={"exception": e},
                         callback=method_name,
                     ) from e
 

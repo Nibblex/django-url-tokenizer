@@ -4,9 +4,11 @@ from django.utils.translation import gettext_lazy as _
 
 
 @unique
-class ErrorCodes(Enum):
+class ErrorCode(Enum):
     invalid_token_type = _("There is no token type with name '{token_type}'")
     invalid_method = _("User model has no method '{method_name}'")
+    no_email = _("User does not have an email address associated with their account")
+    no_phone = _("User does not have a phone number associated with their account")
     send_precondition_execution_error = _(
         "Error during send precondition '{pred}' execution"
     )
@@ -17,9 +19,9 @@ class ErrorCodes(Enum):
 
 
 class URLTokenizerError(Exception):
-    def __init__(self, message, code, context=None, *args, **kwargs):
-        self.message = message.format(*args, **kwargs)
-        self.code = code
+    def __init__(self, error_code: ErrorCode, context: dict = None, *args, **kwargs):
+        self.message = error_code.value.format(*args, **kwargs)
+        self.code = error_code.name
         self.context = context or {}
 
     def __repr__(self):

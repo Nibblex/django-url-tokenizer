@@ -18,7 +18,7 @@ from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.utils.translation import gettext_lazy as _
 
 from .enums import Channel
-from .exceptions import ErrorCodes, URLTokenizerError
+from .exceptions import ErrorCode, URLTokenizerError
 from .models import Log
 from .token_generator import TokenGenerator
 from .utils import SETTINGS, from_config, str_import
@@ -79,6 +79,10 @@ class URLToken:
 
 
 class URLTokenizer:
+    @property
+    def user_model(self):
+        return get_user_model()
+
     def __init__(self, token_type: str | Enum | None = None):
         self.token_type = self._parse_token_type(token_type)
         # at this point token_type is either None or a string
@@ -146,11 +150,7 @@ class URLTokenizer:
         validate_token_type = settings_.get("VALIDATE_TOKEN_TYPE", True)
 
         if token_config is None and validate_token_type:
-            raise URLTokenizerError(
-                ErrorCodes.invalid_token_type.value,
-                ErrorCodes.invalid_token_type.name,
-                token_type=token_type,
-            )
+            raise URLTokenizerError(ErrorCode.invalid_token_type, token_type=token_type)
 
         return token_config or TOKEN_CONFIG.get("default", {})
 
@@ -167,10 +167,6 @@ class URLTokenizer:
             callbacks=from_config(token_config, "callbacks", []),
             timeout=from_config(token_config, "timeout", 60),
         )
-
-    @property
-    def user_model(self):
-        return get_user_model()
 
     # encoding
 
@@ -205,68 +201,73 @@ class URLTokenizer:
         if fail_silently is None:
             fail_silently = self.fail_silently
 
-        email = str(getattr(user, self.email_field))
-        name = str(getattr(user, self.name_field, ""))
+        email = str(getattr(user, self.email_field, "") or "")
+        name = str(getattr(user, self.name_field, "") or "")
         phone = str(getattr(user, self.phone_field, "") or "")
         url_token = URLToken(self.token_type, user, email, name, phone, channel=channel)
 
         for pred in self.send_preconditions:
             try:
-                check = pred(user)
+                url_token.precondition_failed = not pred(user)
             except Exception as e:
+                url_token.precondition_failed = True
                 url_token.exception = URLTokenizerError(
-                    ErrorCodes.send_precondition_execution_error.value,
-                    ErrorCodes.send_precondition_execution_error.name,
-                    context=dict(exception=e),
+                    ErrorCode.send_precondition_execution_error,
+                    context={"exception": e},
                     pred=pred,
                 )
 
-                if self.logging_enabled:
-                    url_token.log()
+            if self.logging_enabled:
+                url_token.log()
 
-                if fail_silently:
-                    return url_token
+            if url_token.exception and not fail_silently:
+                from_exc = url_token.exception.context.get("exception")
+                raise url_token.exception from from_exc
 
-                raise url_token.exception from e
-
-            if not check:
-                url_token = url_token._(precondition_failed=True)
-                if self.logging_enabled:
-                    url_token.log()
-
+            if url_token.precondition_failed:
                 return url_token
 
         uidb64 = self.encode(getattr(user, self.encoding_field))
         token = self._token_generator.make_token(user)
-        url_token.hash = hashlib.sha256(force_bytes(uidb64 + token)).hexdigest()
-
         link = f"{protocol}://{domain}:{port}/{self.path}?uid={uidb64}&key={token}"
-        if channel:
-            link += f"&channel={channel}"
+        hash = hashlib.sha256(force_bytes(link)).hexdigest()
 
-        sent = 0
+        sent, exc = 0, None
         if self.send_enabled:
             if channel == Channel.EMAIL:
-                sent = send_mail(
-                    subject=email_subject,
-                    message=link,
-                    from_email=settings.DEFAULT_FROM_EMAIL,
-                    recipient_list=[email],
-                    fail_silently=fail_silently,
-                )
+                if email:
+                    sent = send_mail(
+                        subject=email_subject,
+                        message=link,
+                        from_email=settings.DEFAULT_FROM_EMAIL,
+                        recipient_list=[email],
+                        fail_silently=fail_silently,
+                    )
+
+                else:
+                    exc = URLTokenizerError(ErrorCode.no_email)
 
             elif channel == Channel.SMS and HAS_SMS:
-                sent = send_sms(
-                    body=link,
-                    originator=settings.DEFAULT_FROM_SMS,
-                    recipients=[phone],
-                    fail_silently=fail_silently,
-                )
+                if phone:
+                    sent = send_sms(
+                        body=link,
+                        originator=settings.DEFAULT_FROM_SMS,
+                        recipients=[phone],
+                        fail_silently=fail_silently,
+                    )
 
-        url_token = url_token._(uidb64=uidb64, token=token, link=link, sent=sent > 0)
+                else:
+                    exc = URLTokenizerError(ErrorCode.no_phone)
+
+        url_token = url_token._(
+            uidb64=uidb64, token=token, link=link, hash=hash, sent=sent > 0, exception=exc
+        )
 
         if self.logging_enabled:
             url_token.log()
+
+        if exc and not fail_silently:
+            raise exc
 
         return url_token
 
