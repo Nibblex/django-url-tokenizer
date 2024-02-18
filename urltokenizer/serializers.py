@@ -21,10 +21,18 @@ class SendTokenSerializer(ChannelSerializer):
     phone = serializers.CharField(required=False)
 
     def validate(self, data):
-        if not data.get("email") and not data.get("phone"):
+        email, phone = data.get("email"), data.get("phone")
+        if not email and not phone:
             raise serializers.ValidationError(
                 "Either 'email' or 'phone' is required for sending token."
             )
+
+        email_field = from_config(SETTINGS, "email_field", "email")
+        phone_field = from_config(SETTINGS, "phone_field", "phone")
+
+        self.context["user"] = get_object_or_404(
+            User, **{email_field: email} if email else {phone_field: phone}
+        )
 
         return data
 
@@ -36,19 +44,9 @@ class SendTokenSerializer(ChannelSerializer):
             "attribute on the view correctly." % view.__class__.__name__
         )
 
-        email_field = from_config(SETTINGS, "email_field", "email")
-        phone_field = from_config(SETTINGS, "phone_field", "phone")
-
-        channel = validated_data.get("channel")
-        email = validated_data.get("email")
-        phone = validated_data.get("phone")
-
-        user = self.context.get("user")
-        user = user or get_object_or_404(
-            User, **{email_field: email} if email else {phone_field: phone}
-        )
-
         tokenizer = URLTokenizer(view.kwargs["type"])
+        user = self.context.get("user")
+        channel = validated_data.get("channel")
 
         url_token = tokenizer.generate_tokenized_link(
             user, channel=channel, fail_silently=True
