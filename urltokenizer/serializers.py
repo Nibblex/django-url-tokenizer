@@ -48,6 +48,10 @@ class SendTokenSerializer(ChannelSerializer):
 
         tokenizer = URLTokenizer(view.kwargs["type"])
 
-        url_token = tokenizer.generate_tokenized_link(user, channel=channel)
+        url_token = tokenizer.generate_tokenized_link(
+            user, channel=channel, fail_silently=True
+        )
+        if url_token.exception:
+            raise serializers.ValidationError(url_token.exception)
 
         return validated_data
