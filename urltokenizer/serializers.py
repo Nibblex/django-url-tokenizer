@@ -20,16 +20,6 @@ class SendTokenSerializer(ChannelSerializer):
     email = serializers.EmailField(required=False)
     phone = serializers.CharField(required=False)
 
-    def __init__(self, *args, **kwargs):
-        view = self.context["view"]
-        assert "type" in view.kwargs, (
-            "Expected view %s to be called with a URL keyword argument "
-            "named 'type'. Fix your URL conf, or set the `.token_type_field` "
-            "attribute on the view correctly." % view.__class__.__name__
-        )
-
-        super().__init__(*args, **kwargs)
-
     def validate(self, data):
         if not data.get("email") and not data.get("phone"):
             raise serializers.ValidationError(
@@ -40,6 +30,12 @@ class SendTokenSerializer(ChannelSerializer):
 
     def create(self, validated_data):
         view = self.context["view"]
+        assert "type" in view.kwargs, (
+            "Expected view %s to be called with a URL keyword argument "
+            "named 'type'. Fix your URL conf, or set the `.token_type_field` "
+            "attribute on the view correctly." % view.__class__.__name__
+        )
+
         email_field = from_config(SETTINGS, "email_field", "email")
         phone_field = from_config(SETTINGS, "phone_field", "phone")
 
