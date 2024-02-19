@@ -15,6 +15,7 @@ from django.db.utils import ProgrammingError
 from django.utils import timezone
 from django.utils.encoding import DjangoUnicodeDecodeError, force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
+from django.utils.module_loading import import_string
 from django.utils.translation import gettext_lazy as _
 
 from .enums import Channel
@@ -91,6 +92,7 @@ class URLTokenizer:
         self._token_generator = self._get_token_generator(token_config)
 
         # token
+        self.user_serializer = from_config(token_config, "user_serializer", None)
         self.encoding_field = from_config(token_config, "encoding_field", "pk")
         self.fail_silently = from_config(token_config, "fail_silently", False)
         self.logging_enabled = from_config(token_config, "logging_enabled", False)
@@ -319,7 +321,13 @@ class URLTokenizer:
 
         return url_tokens
 
-    def check_token(self, uidb64: str, token: str, fail_silently: bool | None = None):
+    def check_token(
+        self,
+        uidb64: str,
+        token: str,
+        user_data: dict = None,
+        fail_silently: bool | None = None,
+    ):
         if fail_silently is None:
             fail_silently = self.fail_silently
 
@@ -342,6 +350,8 @@ class URLTokenizer:
         if not self.check_logs:
             return user, None
 
+        # check log
+
         hash = hashlib.sha256(force_bytes(uidb64 + token)).hexdigest()
         try:
             log = Log.objects.filter(hash=hash).first()
@@ -356,6 +366,25 @@ class URLTokenizer:
 
         log.checked_at = timezone.now()
         log.save(update_fields=["checked_at"])
+
+        # update user data
+
+        if user_data and self.user_serializer:
+            user_serializer = import_string(self.user_serializer)
+            user = user_serializer(user, data=user_data, partial=True)
+            try:
+                user.is_valid(raise_exception=True)
+            except Exception as e:
+                if fail_silently:
+                    return user, log
+
+                raise URLTokenizerError(
+                    ErrorCode.user_serializer_error,
+                    serializer=self.user_serializer,
+                    context={"exception": e},
+                ) from e
+
+            user.save()
 
         return user, log
 

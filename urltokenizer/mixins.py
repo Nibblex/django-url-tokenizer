@@ -50,6 +50,7 @@ class URLTokenizerMixin:
         self,
         token_type: str | Enum | None = None,
         token: str | None = None,
+        user_data: dict = None,
         callback_kwargs: Iterable = [],
         fail_silently: bool | None = None,
     ):
@@ -58,7 +59,7 @@ class URLTokenizerMixin:
         tokenizer = URLTokenizer(token_type)
         uidb64 = tokenizer.encode(getattr(self, tokenizer.encoding_field))
 
-        user, log = tokenizer.check_token(uidb64, token)
+        user, log = tokenizer.check_token(uidb64, token, user_data, fail_silently)
         if not user:
             return False, log, {}
 
