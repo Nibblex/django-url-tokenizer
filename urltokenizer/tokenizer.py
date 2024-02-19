@@ -35,13 +35,13 @@ except ImportError:
 @dataclass
 class URLToken:
     created_at: datetime = timezone.now()
-    type: str | None
+    type: str | None = None
     uidb64: str = ""
     token: str = ""
     link: str = ""
     hash: str | None = None
-    email: str
-    name: str
+    email: str = ""
+    name: str = ""
     phone: str = ""
     channel: Channel | None = None
     precondition_failed: bool = False
