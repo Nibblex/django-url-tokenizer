@@ -34,21 +34,21 @@ except ImportError:
 
 @dataclass
 class URLToken:
+    created_at: datetime = timezone.now()
     type: str | None
-    user: object
-    email: str
-    name: str
-    phone: str = ""
     uidb64: str = ""
     token: str = ""
     link: str = ""
     hash: str | None = None
-    timestamp: datetime = timezone.now()
-    precondition_failed: bool = False
+    email: str
+    name: str
+    phone: str = ""
     channel: Channel | None = None
+    precondition_failed: bool = False
     sent: bool = False
-    logged: bool = False
     exception: URLTokenizerError | None = None
+    log: Log | None = None
+    user: object
 
     def _(self, **kwargs):
         for key, value in kwargs.items():
@@ -58,10 +58,9 @@ class URLToken:
 
     def log(self) -> Log | None:
         with suppress(ProgrammingError):
-            log = Log.objects.create(
-                timestamp=self.timestamp,
+            self.log = Log.objects.create(
+                created_at=self.created_at,
                 token_type=self.type,
-                user=self.user,
                 uidb64=self.uidb64,
                 hash=self.hash,
                 email=self.email,
@@ -71,10 +70,10 @@ class URLToken:
                 precondition_failed=self.precondition_failed,
                 sent=self.sent,
                 errors=self.exception.__repr__() if self.exception else None,
+                user=self.user,
             )
 
-            self.logged = True
-            return log
+            return self.log
 
         return None
 

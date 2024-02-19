@@ -7,19 +7,19 @@ User = get_user_model()
 
 
 class Log(models.Model):
-    timestamp = models.DateTimeField(null=True)
+    created_at = models.DateTimeField(null=True)
+    checked_at = models.DateTimeField(null=True)
     token_type = models.CharField(max_length=255, null=True)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
     uidb64 = models.CharField(max_length=255, null=True)
     hash = models.CharField(max_length=255, unique=True, null=True)
-    email = models.EmailField(null=True)
     name = models.CharField(max_length=255, null=True)
+    email = models.EmailField(null=True)
     phone = models.CharField(max_length=255, null=True)
     channel = models.CharField(max_length=255, choices=Channel.choices, null=True)
     precondition_failed = models.BooleanField(default=False)
     sent = models.BooleanField(default=False)
-    checked_at = models.DateTimeField(null=True)
     errors = models.CharField(max_length=255, null=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
 
     @property
     def checked(self):
