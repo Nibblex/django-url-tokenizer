@@ -226,7 +226,14 @@ class URLTokenizer:
         email = str(getattr(user, self.email_field, "") or "")
         name = str(getattr(user, self.name_field, "") or "")
         phone = str(getattr(user, self.phone_field, "") or "")
-        url_token = URLToken(self.token_type, user, email, name, phone, channel=channel)
+        url_token = URLToken(
+            type=self.token_type,
+            user=user,
+            email=email,
+            name=name,
+            phone=phone,
+            channel=channel,
+        )
 
         for pred in self.send_preconditions:
             try:
