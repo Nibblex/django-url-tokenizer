@@ -6,6 +6,7 @@ from django.core.exceptions import ImproperlyConfigured
 from django.utils.translation import gettext_lazy as _
 
 from .enums import Channel
+from .utils import encode
 
 
 class URLTokenizerMixin:
@@ -58,7 +59,7 @@ class URLTokenizerMixin:
         from .tokenizer import URLTokenizer
 
         tokenizer = URLTokenizer(token_type)
-        uidb64 = tokenizer.encode(getattr(self, tokenizer.encoding_field))
+        uidb64 = encode(getattr(self, tokenizer.encoding_field))
 
         user, log = tokenizer.check_token(uidb64, token, user_data, fail_silently)
         if not user:

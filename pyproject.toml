@@ -1,3 +1,6 @@
+[tool.ruff]
+line-length = 90
+
 [tool.black]
 line-length = 90
 exclude = '''

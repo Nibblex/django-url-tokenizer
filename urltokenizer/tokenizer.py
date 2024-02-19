@@ -5,7 +5,6 @@ from contextlib import suppress
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Any
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -13,8 +12,7 @@ from django.core.exceptions import ImproperlyConfigured
 from django.core.mail import send_mail
 from django.db.utils import ProgrammingError
 from django.utils import timezone
-from django.utils.encoding import DjangoUnicodeDecodeError, force_bytes, force_str
-from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
+from django.utils.encoding import DjangoUnicodeDecodeError, force_bytes
 from django.utils.module_loading import import_string
 from django.utils.translation import gettext_lazy as _
 
@@ -22,7 +20,7 @@ from .enums import Channel
 from .exceptions import ErrorCode, URLTokenizerError
 from .models import Log
 from .token_generator import TokenGenerator
-from .utils import SETTINGS, from_config, str_import
+from .utils import SETTINGS, decode, encode, from_config, str_import
 
 try:
     from sms import send_sms
@@ -83,6 +81,10 @@ class URLTokenizer:
     def user_model(self):
         return get_user_model()
 
+    @property
+    def encoding_field(self):
+        return self._token_generator.encoding_field
+
     def __init__(self, token_type: str | Enum | None = None):
         self.token_type = self._parse_token_type(token_type)
         # at this point token_type is either None or a string
@@ -93,12 +95,10 @@ class URLTokenizer:
         # token
         self.validate_token_type = SETTINGS.get("VALIDATE_TOKEN_TYPE", True)
         self.user_serializer = from_config(token_config, "user_serializer", None)
-        self.encoding_field = from_config(token_config, "encoding_field", "pk")
         self.fail_silently = from_config(token_config, "fail_silently", False)
 
         # logging
         self.logging_enabled = from_config(token_config, "logging_enabled", False)
-        self.check_logs = from_config(token_config, "check_logs", False)
 
         # url
         self.path = from_config(token_config, "path", "").strip("/")
@@ -160,21 +160,6 @@ class URLTokenizer:
 
     # helpers
 
-    def _check_log(self, uidb64: str, token: str) -> Log | None:
-        hash = hashlib.sha256(force_bytes(uidb64 + token)).hexdigest()
-        try:
-            log = Log.objects.filter(hash=hash).first()
-        except ProgrammingError:
-            return None
-
-        if not log or log.checked:
-            return None
-
-        log.checked_at = timezone.now()
-        log.save(update_fields=["checked_at"])
-
-        return log
-
     def _update_user_data(self, user, user_data: dict | None):
         if user_data and self.user_serializer:
             user_serializer = import_string(self.user_serializer)
@@ -191,16 +176,6 @@ class URLTokenizer:
                     ) from e
             else:
                 serializer.save()
-
-    # encoding
-
-    @staticmethod
-    def encode(s: Any) -> str:
-        return urlsafe_base64_encode(force_bytes(s))
-
-    @staticmethod
-    def decode(s: bytes | str) -> str:
-        return force_str(urlsafe_base64_decode(s))
 
     # main methods
 
@@ -261,7 +236,7 @@ class URLTokenizer:
 
                 return url_token
 
-        uidb64 = self.encode(getattr(user, self.encoding_field))
+        uidb64 = encode(getattr(user, self.encoding_field))
         token = self._token_generator.make_token(user)
         link = f"{protocol}://{domain}:{port}/{self.path}?uid={uidb64}&key={token}"
         hash = hashlib.sha256(force_bytes(uidb64 + token)).hexdigest()
@@ -362,7 +337,7 @@ class URLTokenizer:
 
         # decode uidb64
         try:
-            decoded_attr = self.decode(uidb64)
+            decoded_attr = decode(uidb64)
         except DjangoUnicodeDecodeError:
             return None, None
 
@@ -374,14 +349,10 @@ class URLTokenizer:
             return None, None
 
         # check token
-        if not self._token_generator.check_token(
+        checked, log = self._token_generator.check_token(
             user, token, fail_silently=fail_silently
-        ):
-            return None, None
-
-        # check log
-        log = self._check_log(uidb64, token)
-        if not log and self.check_logs:
+        )
+        if not checked:
             return None, None
 
         # update user data
