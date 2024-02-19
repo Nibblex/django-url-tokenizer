@@ -56,7 +56,7 @@ class URLToken:
 
         return self
 
-    def log(self) -> Log | None:
+    def _log(self) -> Log | None:
         with suppress(ProgrammingError):
             self.log = Log.objects.create(
                 created_at=self.created_at,
@@ -241,14 +241,14 @@ class URLTokenizer:
 
             if url_token.exception and not fail_silently:
                 if self.logging_enabled:
-                    url_token.log()
+                    url_token._log()
 
                 from_exc = url_token.exception.context.get("exception")
                 raise url_token.exception from from_exc
 
             if url_token.precondition_failed:
                 if self.logging_enabled:
-                    url_token.log()
+                    url_token._log()
 
                 return url_token
 
@@ -289,7 +289,7 @@ class URLTokenizer:
         )
 
         if self.logging_enabled:
-            url_token.log()
+            url_token._log()
 
         if exc and not fail_silently:
             raise exc
