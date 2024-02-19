@@ -170,7 +170,9 @@ class URLTokenizer:
             timeout=from_config(token_config, "timeout", 60),
         )
 
-    def _update_user_data(self, user, user_data: dict):
+    # helpers
+
+    def _update_user_data(self, user, user_data: dict | None):
         if user_data and self.user_serializer:
             user_serializer = import_string(self.user_serializer)
             user = user_serializer(user, data=user_data, partial=True)
@@ -350,24 +352,26 @@ class URLTokenizer:
         if fail_silently is None:
             fail_silently = self.fail_silently
 
+        # decode uidb64
         try:
             decoded_attr = self.decode(uidb64)
         except DjangoUnicodeDecodeError:
             return None, None
 
+        # user lookup
         user = self.user_model.objects.filter(
             **{self.encoding_field: decoded_attr}
         ).first()
         if not user:
             return None, None
 
+        # check token
         if not self._token_generator.check_token(
             user, token, fail_silently=fail_silently
         ):
             return None, None
 
         # check log
-
         log = None
         if self.check_logs:
             hash = hashlib.sha256(force_bytes(uidb64 + token)).hexdigest()
@@ -386,7 +390,6 @@ class URLTokenizer:
             log.save(update_fields=["checked_at"])
 
         # update user data
-
         user = self._update_user_data(user, user_data)
 
         return user, log
