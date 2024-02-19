@@ -88,12 +88,15 @@ class URLTokenizer:
         # at this point token_type is either None or a string
 
         token_config = self._get_token_config(SETTINGS, self.token_type)
-        self._token_generator = self._get_token_generator(token_config)
+        self._token_generator = TokenGenerator(token_config)
 
         # token
+        self.validate_token_type = SETTINGS.get("VALIDATE_TOKEN_TYPE", True)
         self.user_serializer = from_config(token_config, "user_serializer", None)
         self.encoding_field = from_config(token_config, "encoding_field", "pk")
         self.fail_silently = from_config(token_config, "fail_silently", False)
+
+        # logging
         self.logging_enabled = from_config(token_config, "logging_enabled", False)
         self.check_logs = from_config(token_config, "check_logs", False)
 
@@ -123,6 +126,8 @@ class URLTokenizer:
         # sms
         self.phone_field = from_config(token_config, "phone_field", "phone")
 
+    # initialization
+
     @staticmethod
     def _parse_token_type(token_type: str | Enum | None) -> str | None:
         if isinstance(token_type, str):
@@ -134,8 +139,7 @@ class URLTokenizer:
 
         return token_type
 
-    @staticmethod
-    def _get_token_config(settings_: dict, token_type: str | None) -> dict:
+    def _get_token_config(self, settings_: dict, token_type: str | None) -> dict:
         TOKEN_CONFIG = settings_.get("TOKEN_CONFIG", {})
 
         # avoid empty token_type
@@ -147,37 +151,37 @@ class URLTokenizer:
         if token_type is None:
             return TOKEN_CONFIG.get("default", {})
 
+        # validate token_type
         token_config = TOKEN_CONFIG.get(token_type, None)
-        validate_token_type = settings_.get("VALIDATE_TOKEN_TYPE", True)
-
-        if token_config is None and validate_token_type:
+        if token_config is None and self.validate_token_type:
             raise URLTokenizerError(ErrorCode.invalid_token_type, token_type=token_type)
 
         return token_config or TOKEN_CONFIG.get("default", {})
 
-    @staticmethod
-    def _get_token_generator(token_config: dict) -> TokenGenerator:
-        check_preconditions = str_import(
-            SETTINGS.get("CHECK_PRECONDITIONS", [])
-            + token_config.get("check_preconditions", [])
-        )
-
-        return TokenGenerator(
-            attributes=from_config(token_config, "attributes", []),
-            check_preconditions=check_preconditions,
-            callbacks=from_config(token_config, "callbacks", []),
-            timeout=from_config(token_config, "timeout", 60),
-        )
-
     # helpers
+
+    def _check_log(self, uidb64: str, token: str) -> Log | None:
+        hash = hashlib.sha256(force_bytes(uidb64 + token)).hexdigest()
+        try:
+            log = Log.objects.filter(hash=hash).first()
+        except ProgrammingError:
+            return None
+
+        if not log or log.checked:
+            return None
+
+        log.checked_at = timezone.now()
+        log.save(update_fields=["checked_at"])
+
+        return log
 
     def _update_user_data(self, user, user_data: dict | None):
         if user_data and self.user_serializer:
             user_serializer = import_string(self.user_serializer)
-            user = user_serializer(user, data=user_data, partial=True)
+            serializer = user_serializer(user, data=user_data, partial=True)
 
             try:
-                user.is_valid(raise_exception=True)
+                serializer.is_valid(raise_exception=True)
             except Exception as e:
                 if not self.fail_silently:
                     raise URLTokenizerError(
@@ -186,9 +190,7 @@ class URLTokenizer:
                         context={"exception": e},
                     ) from e
             else:
-                user.save()
-
-        return user
+                serializer.save()
 
     # encoding
 
@@ -378,22 +380,9 @@ class URLTokenizer:
             return None, None
 
         # check log
-        log = None
-        if self.check_logs:
-            hash = hashlib.sha256(force_bytes(uidb64 + token)).hexdigest()
-            try:
-                log = Log.objects.filter(hash=hash).first()
-            except ProgrammingError:
-                return user, None
-
-            if not log:
-                return None, None
-
-            if log.checked:
-                return None, log
-
-            log.checked_at = timezone.now()
-            log.save(update_fields=["checked_at"])
+        log = self._check_log(uidb64, token)
+        if not log and self.check_logs:
+            return None, None
 
         # update user data
         self._update_user_data(user, user_data)

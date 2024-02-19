@@ -6,7 +6,7 @@ from django.utils.crypto import constant_time_compare, salted_hmac
 from django.utils.http import base36_to_int, int_to_base36
 
 from .exceptions import ErrorCode, URLTokenizerError
-from .utils import str_import
+from .utils import SETTINGS, str_import, from_config
 
 
 class TokenGenerator:
@@ -18,18 +18,17 @@ class TokenGenerator:
     algorithm = None
     _secret = None
 
-    def __init__(
-        self,
-        attributes: list = [],
-        check_preconditions: list = [],
-        callbacks: list = [],
-        timeout: int = 60,
-    ):
+    def __init__(self, token_config: dict = {}):
+        check_preconditions = str_import(
+            SETTINGS.get("CHECK_PRECONDITIONS", [])
+            + token_config.get("check_preconditions", [])
+        )
+
         self.algorithm = self.algorithm or "sha256"
-        self.attributes = attributes
-        self.check_preconditions = str_import(check_preconditions)
-        self.callbacks = callbacks
-        self.timeout = timeout
+        self.attributes = from_config(token_config, "attributes", [])
+        self.check_preconditions = check_preconditions
+        self.callbacks = from_config(token_config, "callbacks", [])
+        self.timeout = from_config(token_config, "timeout", 60)
 
     @property
     def secret(self):
