@@ -396,7 +396,7 @@ class URLTokenizer:
             log.save(update_fields=["checked_at"])
 
         # update user data
-        user = self._update_user_data(user, user_data)
+        self._update_user_data(user, user_data)
 
         return user, log
 
