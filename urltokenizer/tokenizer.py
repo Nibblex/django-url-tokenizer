@@ -170,6 +170,25 @@ class URLTokenizer:
             timeout=from_config(token_config, "timeout", 60),
         )
 
+    def _update_user_data(self, user, user_data: dict):
+        if user_data and self.user_serializer:
+            user_serializer = import_string(self.user_serializer)
+            user = user_serializer(user, data=user_data, partial=True)
+
+            try:
+                user.is_valid(raise_exception=True)
+            except Exception as e:
+                if not self.fail_silently:
+                    raise URLTokenizerError(
+                        ErrorCode.user_serializer_error,
+                        serializer=self.user_serializer,
+                        context={"exception": e},
+                    ) from e
+            else:
+                user.save()
+
+        return user
+
     # encoding
 
     @staticmethod
@@ -235,7 +254,7 @@ class URLTokenizer:
         uidb64 = self.encode(getattr(user, self.encoding_field))
         token = self._token_generator.make_token(user)
         link = f"{protocol}://{domain}:{port}/{self.path}?uid={uidb64}&key={token}"
-        hash = hashlib.sha256(force_bytes(link)).hexdigest()
+        hash = hashlib.sha256(force_bytes(uidb64 + token)).hexdigest()
 
         sent, exc = 0, None
         if self.send_enabled:
@@ -325,7 +344,7 @@ class URLTokenizer:
         self,
         uidb64: str,
         token: str,
-        user_data: dict = None,
+        user_data: dict | None = None,
         fail_silently: bool | None = None,
     ):
         if fail_silently is None:
@@ -347,44 +366,28 @@ class URLTokenizer:
         ):
             return None, None
 
-        if not self.check_logs:
-            return user, None
-
         # check log
 
-        hash = hashlib.sha256(force_bytes(uidb64 + token)).hexdigest()
-        try:
-            log = Log.objects.filter(hash=hash).first()
-        except ProgrammingError:
-            return user, None
+        log = None
+        if self.check_logs:
+            hash = hashlib.sha256(force_bytes(uidb64 + token)).hexdigest()
+            try:
+                log = Log.objects.filter(hash=hash).first()
+            except ProgrammingError:
+                return user, None
 
-        if not log:
-            return None, None
+            if not log:
+                return None, None
 
-        if log.checked:
-            return None, log
+            if log.checked:
+                return None, log
 
-        log.checked_at = timezone.now()
-        log.save(update_fields=["checked_at"])
+            log.checked_at = timezone.now()
+            log.save(update_fields=["checked_at"])
 
         # update user data
 
-        if user_data and self.user_serializer:
-            user_serializer = import_string(self.user_serializer)
-            user = user_serializer(user, data=user_data, partial=True)
-            try:
-                user.is_valid(raise_exception=True)
-            except Exception as e:
-                if fail_silently:
-                    return user, log
-
-                raise URLTokenizerError(
-                    ErrorCode.user_serializer_error,
-                    serializer=self.user_serializer,
-                    context={"exception": e},
-                ) from e
-
-            user.save()
+        user = self._update_user_data(user, user_data)
 
         return user, log
 

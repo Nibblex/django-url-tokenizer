@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
+from rest_framework.exceptions import AuthenticationFailed
 
 from .enums import Channel
 from .tokenizer import URLTokenizer
@@ -75,16 +76,13 @@ class CheckTokenSerializer(serializers.Serializer):
 
         tokenizer = URLTokenizer(view.kwargs["type"])
 
-        uidb64 = validated_data["uidb64"]
-        token = validated_data["token"]
+        uidb64, token = validated_data["uidb64"], validated_data["token"]
         user_data = validated_data["user_data"]
         callback_kwargs = validated_data.get("callbacks_kwargs", {})
 
         user, log = tokenizer.check_token(uidb64, token, user_data, fail_silently=True)
         if not user:
-            raise serializers.ValidationError(
-                _("The token is invalid or has expired. Please request a new one.")
-            )
+            raise AuthenticationFailed(_("The token is invalid or has expired."))
 
         callbacks_returns = tokenizer.run_callbacks(
             user, callback_kwargs=callback_kwargs, fail_silently=True

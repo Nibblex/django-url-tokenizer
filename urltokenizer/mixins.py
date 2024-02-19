@@ -50,7 +50,7 @@ class URLTokenizerMixin:
         self,
         token_type: str | Enum | None = None,
         token: str | None = None,
-        user_data: dict = None,
+        user_data: dict | None = None,
         callback_kwargs: Iterable = [],
         fail_silently: bool | None = None,
     ):
