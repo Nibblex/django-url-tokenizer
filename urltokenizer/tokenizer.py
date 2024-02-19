@@ -48,7 +48,7 @@ class URLToken:
     sent: bool = False
     exception: URLTokenizerError | None = None
     log: Log | None = None
-    user: object
+    user: object | None = None
 
     def _(self, **kwargs):
         for key, value in kwargs.items():
