@@ -35,6 +35,7 @@ class URLTokenizerMixin:
         from .tokenizer import URLTokenizer
 
         tokenizer = URLTokenizer(token_type)
+
         return tokenizer.generate_tokenized_link(
             self,
             path=path,

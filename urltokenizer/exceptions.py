@@ -15,8 +15,8 @@ class ErrorCode(Enum):
     check_precondition_execution_error = _(
         "Error during check precondition '{pred}' execution"
     )
-    callback_execution_error = _("Error during callback '{callback}' execution")
     user_serializer_error = _("'is_valid' method from {serializer} returned False")
+    callback_execution_error = _("Error during callback '{callback}' execution")
 
 
 class URLTokenizerError(Exception):
