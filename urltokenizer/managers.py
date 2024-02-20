@@ -6,6 +6,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 from .enums import Channel
+from .tokenizer import URLToken
 
 
 class URLTokenizerQueryset(models.QuerySet):
@@ -28,10 +29,11 @@ class URLTokenizerQueryset(models.QuerySet):
         channel: Channel | None = None,
         email_subject: str | None = None,
         fail_silently: bool | None = None,
-    ):
+    ) -> list[URLToken]:
         from .tokenizer import URLTokenizer
 
         tokenizer = URLTokenizer(token_type)
+
         return tokenizer.bulk_generate_tokenized_link(
             self,
             path=path,

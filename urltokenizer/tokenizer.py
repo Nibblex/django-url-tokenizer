@@ -5,6 +5,7 @@ from contextlib import suppress
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
+from typing import Any
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -13,7 +14,6 @@ from django.core.mail import send_mail
 from django.db.utils import ProgrammingError
 from django.utils import timezone
 from django.utils.encoding import DjangoUnicodeDecodeError, force_bytes
-from django.utils.module_loading import import_string
 from django.utils.translation import gettext_lazy as _
 
 from .enums import Channel
@@ -32,8 +32,9 @@ except ImportError:
 
 @dataclass
 class URLToken:
+    user: object
+    type: str
     created_at: datetime = timezone.now()
-    type: str | None = None
     uidb64: str = ""
     token: str = ""
     link: str = ""
@@ -46,7 +47,6 @@ class URLToken:
     sent: bool = False
     exception: URLTokenizerError | None = None
     log: Log | None = None
-    user: object | None = None
 
     def _(self, **kwargs):
         for key, value in kwargs.items():
@@ -78,11 +78,11 @@ class URLToken:
 
 class URLTokenizer:
     @property
-    def user_model(self):
+    def user_model(self) -> object:
         return get_user_model()
 
     @property
-    def encoding_field(self):
+    def encoding_field(self) -> str:
         return self._token_generator.encoding_field
 
     def __init__(self, token_type: str | Enum | None = None):
@@ -94,7 +94,6 @@ class URLTokenizer:
 
         # token
         self.validate_token_type = SETTINGS.get("VALIDATE_TOKEN_TYPE", True)
-        self.user_serializer = from_config(token_config, "user_serializer", None)
         self.fail_silently = from_config(token_config, "fail_silently", False)
 
         # logging
@@ -139,7 +138,9 @@ class URLTokenizer:
 
         return token_type
 
-    def _get_token_config(self, settings_: dict, token_type: str | None) -> dict:
+    def _get_token_config(
+        self, settings_: dict[str, Any], token_type: str | None
+    ) -> dict[str, Any]:
         TOKEN_CONFIG = settings_.get("TOKEN_CONFIG", {})
 
         # avoid empty token_type
@@ -158,30 +159,11 @@ class URLTokenizer:
 
         return token_config or TOKEN_CONFIG.get("default", {})
 
-    # helpers
-
-    def _update_user_data(self, user, user_data: dict | None):
-        if user_data and self.user_serializer:
-            user_serializer = import_string(self.user_serializer)
-            serializer = user_serializer(user, data=user_data, partial=True)
-
-            try:
-                serializer.is_valid(raise_exception=True)
-            except Exception as e:
-                if not self.fail_silently:
-                    raise URLTokenizerError(
-                        ErrorCode.user_serializer_error,
-                        serializer=self.user_serializer,
-                        context={"exception": e},
-                    ) from e
-            else:
-                serializer.save()
-
     # main methods
 
     def generate_tokenized_link(
         self,
-        user,
+        user: object,
         path: str | None = None,
         domain: str | None = None,
         protocol: str | None = None,
@@ -189,7 +171,7 @@ class URLTokenizer:
         channel: Channel | None = None,
         email_subject: str | None = None,
         fail_silently: bool | None = None,
-    ):
+    ) -> URLToken:
         path = path or self.path
         domain = domain or self.domain
         protocol = protocol or self.protocol
@@ -204,12 +186,7 @@ class URLTokenizer:
         name = str(getattr(user, self.name_field, "") or "")
         phone = str(getattr(user, self.phone_field, "") or "")
         url_token = URLToken(
-            type=self.token_type,
-            user=user,
-            email=email,
-            name=name,
-            phone=phone,
-            channel=channel,
+            user, self.token_type, email=email, name=name, phone=phone, channel=channel
         )
 
         for pred in self.send_preconditions:
@@ -282,7 +259,7 @@ class URLTokenizer:
 
     def bulk_generate_tokenized_link(
         self,
-        users: Iterable,
+        users: Iterable[object],
         path: str | None = None,
         domain: str | None = None,
         protocol: str | None = None,
@@ -290,7 +267,7 @@ class URLTokenizer:
         channel: Channel | None = None,
         email_subject: str | None = None,
         fail_silently: bool | None = None,
-    ):
+    ) -> list[URLToken]:
         if fail_silently is None:
             fail_silently = self.fail_silently
 
@@ -298,7 +275,7 @@ class URLTokenizer:
 
         # Define a helper function to execute generate_tokenized_link for each user
         def generate_link(user):
-            named_tuple = self.generate_tokenized_link(
+            url_token = self.generate_tokenized_link(
                 user,
                 path=path,
                 domain=domain,
@@ -308,7 +285,7 @@ class URLTokenizer:
                 email_subject=email_subject,
                 fail_silently=fail_silently,
             )
-            url_tokens.append(named_tuple)
+            url_tokens.append(url_token)
 
         # Create a thread for each user
         for user in users:
@@ -329,9 +306,9 @@ class URLTokenizer:
         self,
         uidb64: str,
         token: str,
-        user_data: dict | None = None,
+        user_data: dict[str, Any] | None = None,
         fail_silently: bool | None = None,
-    ):
+    ) -> tuple[object | None, Log | None]:
         if fail_silently is None:
             fail_silently = self.fail_silently
 
@@ -350,22 +327,19 @@ class URLTokenizer:
 
         # check token
         checked, log = self._token_generator.check_token(
-            user, token, fail_silently=fail_silently
+            user, token, user_data=user_data, fail_silently=fail_silently
         )
         if not checked:
             return None, None
-
-        # update user data
-        self._update_user_data(user, user_data)
 
         return user, log
 
     def run_callbacks(
         self,
-        user,
-        callback_kwargs: Iterable = [],
+        user: object,
+        callback_kwargs: Iterable[dict[str, Any]] | None = None,
         fail_silently: bool | None = None,
-    ):
+    ) -> dict[str, list[Any]]:
         if fail_silently is None:
             fail_silently = self.fail_silently
 

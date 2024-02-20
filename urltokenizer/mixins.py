@@ -1,17 +1,20 @@
 from collections.abc import Iterable
 from enum import Enum
+from typing import Any
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ImproperlyConfigured
 from django.utils.translation import gettext_lazy as _
 
 from .enums import Channel
+from .models import Log
+from .tokenizer import URLToken
 from .utils import encode
 
 
 class URLTokenizerMixin:
     @property
-    def last_channel(self):
+    def last_channel(self) -> Channel | None:
         log = self.log_set.last()
         return log.channel if log else None
 
@@ -32,7 +35,7 @@ class URLTokenizerMixin:
         channel: Channel | None = None,
         email_subject: str | None = None,
         fail_silently: bool | None = None,
-    ):
+    ) -> URLToken:
         from .tokenizer import URLTokenizer
 
         tokenizer = URLTokenizer(token_type)
@@ -52,10 +55,10 @@ class URLTokenizerMixin:
         self,
         token_type: str | Enum | None = None,
         token: str | None = None,
-        user_data: dict | None = None,
-        callback_kwargs: Iterable = [],
+        user_data: dict[str, Any] | None = None,
+        callback_kwargs: Iterable[dict[str, Any]] | None = None,
         fail_silently: bool | None = None,
-    ):
+    ) -> tuple[bool, Log | None, dict[str, list[Any]]]:
         from .tokenizer import URLTokenizer
 
         tokenizer = URLTokenizer(token_type)

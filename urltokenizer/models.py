@@ -22,5 +22,5 @@ class Log(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
 
     @property
-    def checked(self):
+    def checked(self) -> bool:
         return self.checked_at is not None

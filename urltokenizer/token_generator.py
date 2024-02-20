@@ -1,6 +1,9 @@
 import hashlib
 import inspect
+from collections import defaultdict
+from collections.abc import Iterable
 from datetime import datetime
+from typing import Any
 
 from django.conf import settings
 from django.db.utils import ProgrammingError
@@ -8,6 +11,7 @@ from django.utils import timezone
 from django.utils.crypto import constant_time_compare, salted_hmac
 from django.utils.encoding import force_bytes
 from django.utils.http import base36_to_int, int_to_base36
+from django.utils.module_loading import import_string
 
 from .exceptions import ErrorCode, URLTokenizerError
 from .models import Log
@@ -24,36 +28,50 @@ class TokenGenerator:
     _secret = None
 
     @property
-    def __now(self):
+    def __now(self) -> datetime:
         return datetime.now()
 
     @property
-    def secret(self):
+    def secret(self) -> str:
         return self._secret or settings.SECRET_KEY
 
     @secret.setter
-    def secret(self, value):
+    def secret(self, value: str):
         self._secret = value
 
-    def __init__(self, token_config: dict = {}):
+    def __init__(self, token_config: dict[str, Any] | None = None):
+        token_config = token_config or {}
+
         check_preconditions = str_import(
             SETTINGS.get("CHECK_PRECONDITIONS", [])
             + token_config.get("check_preconditions", [])
         )
 
+        # token
         self.algorithm = self.algorithm or "sha256"
         self.encoding_field = from_config(token_config, "encoding_field", "pk")
         self.attributes = from_config(token_config, "attributes", [])
-        self.check_preconditions = check_preconditions
-        self.check_logs = from_config(token_config, "check_logs", False)
-        self.callbacks = from_config(token_config, "callbacks", [])
         self.timeout = from_config(token_config, "timeout", 60)
 
+        # check
+        self.check_preconditions = check_preconditions
+        self.check_logs = from_config(token_config, "check_logs", False)
+        self.user_serializer = from_config(token_config, "user_serializer", None)
+        self.callbacks = from_config(token_config, "callbacks", [])
+
     @staticmethod
-    def __num_seconds(dt):
+    def __num_seconds(dt) -> int:
         return int((dt - datetime(2001, 1, 1)).total_seconds())
 
-    def _make_token_with_timestamp(self, user, timestamp):
+    def _make_hash_value(self, user: object, timestamp: int) -> str:
+        """
+        Hash the user's primary key and some user attributes to make sure that
+        the token is invalidated when the user changes these attributes.
+        """
+        attributes = [getattr(user, attribute) for attribute in self.attributes]
+        return f"{user.pk}{timestamp}{attributes}"
+
+    def _make_token_with_timestamp(self, user: object, timestamp: int) -> str:
         # timestamp is number of seconds since 2001-1-1. Converted to base 36,
         # this gives us a 6 digit string until about 2069.
         ts_b36 = int_to_base36(timestamp)
@@ -67,13 +85,7 @@ class TokenGenerator:
         ]  # Limit to shorten the URL.
         return f"{ts_b36}-{hash_string}"
 
-    def _make_hash_value(self, user, timestamp):
-        """
-        Hash the user's primary key and some user attributes to make sure that
-        the token is invalidated when the user changes these attributes.
-        """
-        attributes = [getattr(user, attribute) for attribute in self.attributes]
-        return f"{user.pk}{timestamp}{attributes}"
+    # helpers
 
     @staticmethod
     def _check_log(uidb64: str, token: str) -> Log | None:
@@ -91,13 +103,37 @@ class TokenGenerator:
 
         return log
 
-    def make_token(self, user):
+    def _update_user_data(
+        self, user: object, user_data: dict[str, Any], fail_silently: bool = False
+    ):
+        user_serializer = import_string(self.user_serializer)
+        serializer = user_serializer(user, data=user_data, partial=True)
+
+        try:
+            serializer.is_valid(raise_exception=True)
+        except Exception as e:
+            if not fail_silently:
+                raise URLTokenizerError(
+                    ErrorCode.user_serializer_error,
+                    serializer=self.user_serializer,
+                    context={"exception": e},
+                ) from e
+        else:
+            serializer.save()
+
+    def make_token(self, user: object) -> str:
         """
         Return a token that can be used once for the given user.
         """
         return self._make_token_with_timestamp(user, self.__num_seconds(self.__now))
 
-    def check_token(self, user, token, fail_silently=False):
+    def check_token(
+        self,
+        user: object,
+        token: str,
+        user_data: dict[str, Any] | None = None,
+        fail_silently: bool = False,
+    ) -> tuple[bool, Log | None]:
         """
         Check that a token is correct for a given user.
         """
@@ -130,7 +166,7 @@ class TokenGenerator:
 
                 raise URLTokenizerError(
                     ErrorCode.check_precondition_execution_error,
-                    context=dict(exception=e),
+                    context={"exception": e},
                     pred=pred,
                 ) from e
 
@@ -141,9 +177,18 @@ class TokenGenerator:
             if not log:
                 return False, None
 
+        # update user data
+        if user_data and self.user_serializer:
+            self._update_user_data(user, user_data, fail_silently)
+
         return True, log
 
-    def run_callbacks(self, user, callback_kwargs=[], fail_silently=False):
+    def run_callbacks(
+        self,
+        user: object,
+        callback_kwargs: Iterable[dict[str, Any]] | None = None,
+        fail_silently: bool = False,
+    ) -> dict[str, list[Any]]:
         """
         Run callbacks for a given user.
         """
@@ -157,13 +202,13 @@ class TokenGenerator:
                     return kwargs.pop(i)
             return {}
 
-        callback_kwargs_copy = list(callback_kwargs).copy()
+        callback_kwargs_copy = list(callback_kwargs or []).copy()
 
-        callbacks_returns = {}
+        callbacks_returns = defaultdict(list)
         for callback in self.callbacks:
             method_name = callback.get("method")
-            # Search for the callback method on the user model
             method = getattr(user, method_name, None)
+
             if method is None:
                 if fail_silently:
                     continue
@@ -192,10 +237,8 @@ class TokenGenerator:
 
                 continue
 
-            # callbacks_returns is a dict of lists
-            # each list contains the return values of the callback methods
             if callback.get("return_value", False):
-                callbacks_returns.setdefault(method_name, []).append(callback_return)
+                callbacks_returns[method_name].append(callback_return)
 
         return callbacks_returns
 

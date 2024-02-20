@@ -1,4 +1,5 @@
 from enum import Enum, unique
+from typing import Any
 
 from django.utils.translation import gettext_lazy as _
 
@@ -20,15 +21,21 @@ class ErrorCode(Enum):
 
 
 class URLTokenizerError(Exception):
-    def __init__(self, error_code: ErrorCode, context: dict = None, *args, **kwargs):
+    def __init__(
+        self,
+        error_code: ErrorCode,
+        context: dict[str, Any] | None = None,
+        *args,
+        **kwargs,
+    ):
         self.message = error_code.value.format(*args, **kwargs)
         self.code = error_code.name
         self.context = context or {}
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "URLTokenizerError({}, code={}, context={})".format(
             self.message, self.code, self.context
         )
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.message} (code={self.code}, context={self.context})"
