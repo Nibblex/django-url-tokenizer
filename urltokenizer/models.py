@@ -1,9 +1,7 @@
-from django.contrib.auth import get_user_model
+from django.conf import settings
 from django.db import models
 
 from .enums import Channel
-
-User = get_user_model()
 
 
 class Log(models.Model):
@@ -19,7 +17,9 @@ class Log(models.Model):
     precondition_failed = models.BooleanField(default=False)
     sent = models.BooleanField(default=False)
     errors = models.CharField(max_length=255, null=True)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True
+    )
 
     @property
     def checked(self) -> bool:
