@@ -35,6 +35,7 @@ class URLToken:
     user: object
     type: str
     created_at: datetime = timezone.now()
+    expires_at: datetime | None = None
     uidb64: str = ""
     token: str = ""
     link: str = ""
@@ -58,6 +59,7 @@ class URLToken:
         with suppress(ProgrammingError):
             self.log = Log.objects.create(
                 created_at=self.created_at,
+                expires_at=self.expires_at,
                 token_type=self.type,
                 uidb64=self.uidb64,
                 hash=self.hash,
@@ -230,9 +232,14 @@ class URLTokenizer:
             return url_token
 
         uidb64 = encode(getattr(user, self.encoding_field))
-        token = self._token_generator.make_token(user)
+        token, ts = self._token_generator.make_token(user)
         link = f"{protocol}://{domain}:{port}/{self.path}?uid={uidb64}&key={token}"
         hash = hashlib.sha256(force_bytes(uidb64 + token)).hexdigest()
+        expires_at = timezone.make_aware(ts) + self._token_generator.timeout
+
+        url_token = url_token._(
+            uidb64=uidb64, token=token, link=link, hash=hash, expires_at=expires_at
+        )
 
         sent, exc = 0, None
         if self.send_enabled:
@@ -261,9 +268,7 @@ class URLTokenizer:
                 else:
                     exc = URLTokenizerError(ErrorCode.no_phone)
 
-        url_token = url_token._(
-            uidb64=uidb64, token=token, link=link, hash=hash, sent=sent > 0, exception=exc
-        )
+        url_token = url_token._(sent=sent > 0, exception=exc)
 
         if self.logging_enabled:
             url_token._log()

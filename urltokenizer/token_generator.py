@@ -121,11 +121,12 @@ class TokenGenerator:
         else:
             serializer.save()
 
-    def make_token(self, user: object) -> str:
+    def make_token(self, user: object) -> tuple[str, datetime]:
         """
         Return a token that can be used once for the given user.
         """
-        return self._make_token_with_timestamp(user, self.__num_seconds(self.__now))
+        now = self.__now
+        return self._make_token_with_timestamp(user, self.__num_seconds(now)), now
 
     def check_token(
         self,

@@ -7,6 +7,7 @@ from .enums import Channel
 class Log(models.Model):
     created_at = models.DateTimeField(null=True)
     checked_at = models.DateTimeField(null=True)
+    expires_at = models.DateTimeField(null=True)
     token_type = models.CharField(max_length=255, null=True)
     uidb64 = models.CharField(max_length=255, null=True)
     hash = models.CharField(max_length=255, unique=True, null=True)
