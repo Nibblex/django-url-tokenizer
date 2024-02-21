@@ -183,7 +183,7 @@ class TokenGenerator:
             if log is None or log.checked:
                 return False, None
 
-            log.check()
+            log._check()
 
         # update user data
         if user_data and self.user_serializer:

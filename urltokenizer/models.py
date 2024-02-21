@@ -28,7 +28,7 @@ class Log(models.Model):
     def checked(self) -> bool:
         return self.checked_at is not None
 
-    def check(self):
+    def _check(self):
         if not self.checked:
             self.checked_at = timezone.now()
             self.save(update_fields=["checked_at"])
