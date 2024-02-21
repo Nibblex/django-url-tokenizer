@@ -330,7 +330,7 @@ class URLTokenizer:
         user = self.user_model.objects.filter(
             **{self.encoding_field: decoded_attr}
         ).first()
-        if not user:
+        if user is None:
             return None, None
 
         # check token

@@ -1,13 +1,13 @@
+from rest_framework import serializers
+from rest_framework.exceptions import AuthenticationFailed
+
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 from django.utils.translation import gettext_lazy as _
-from rest_framework import serializers
-from rest_framework.exceptions import AuthenticationFailed
 
 from .enums import Channel
 from .tokenizer import URLTokenizer
 from .utils import SETTINGS, from_config
-
 
 User = get_user_model()
 
@@ -54,11 +54,12 @@ class SendTokenSerializer(ChannelSerializer):
 
         user = self.context.get("user")
         channel = validated_data.get("channel")
+        fail_silently = self.context.get("fail_silently")
 
         # send token
 
         url_token = tokenizer.generate_tokenized_link(
-            user, channel=channel, fail_silently=True
+            user, channel=channel, fail_silently=fail_silently
         )
         if url_token.exception:
             raise serializers.ValidationError(url_token.exception)
@@ -84,21 +85,23 @@ class CheckTokenSerializer(serializers.Serializer):
         )
 
         tokenizer = URLTokenizer(view.kwargs[token_type_url_kwarg])
-
-        uidb64, token = validated_data["uidb64"], validated_data["token"]
-        user_data = validated_data["user_data"]
-        callback_kwargs = validated_data.get("callbacks_kwargs", {})
+        fail_silently = self.context.get("fail_silently")
 
         # check token
 
-        user, log = tokenizer.check_token(uidb64, token, user_data, fail_silently=True)
-        if not user:
+        uidb64, token = validated_data["uidb64"], validated_data["token"]
+        user_data = validated_data["user_data"]
+        user, log = tokenizer.check_token(
+            uidb64, token, user_data, fail_silently=fail_silently
+        )
+        if user is None:
             raise AuthenticationFailed(_("The token is invalid or has expired."))
 
         # run callbacks
 
+        callback_kwargs = validated_data.get("callbacks_kwargs", {})
         validated_data["callbacks_returns"] = tokenizer.run_callbacks(
-            user, callback_kwargs=callback_kwargs, fail_silently=True
+            user, callback_kwargs=callback_kwargs, fail_silently=fail_silently
         )
 
         return validated_data

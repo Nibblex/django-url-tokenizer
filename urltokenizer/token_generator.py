@@ -95,7 +95,7 @@ class TokenGenerator:
         except ProgrammingError:
             return None
 
-        if not log or log.checked:
+        if log is None or log.checked:
             return None
 
         log.checked_at = timezone.now()
@@ -174,7 +174,7 @@ class TokenGenerator:
         log = None
         if self.check_logs:
             log = self._check_log(encode(getattr(user, self.encoding_field)), token)
-            if not log:
+            if log is None:
                 return False, None
 
         # update user data
