@@ -44,7 +44,7 @@ class URLToken:
     name: str = ""
     phone: str = ""
     channel: Channel | None = None
-    precondition_failed: bool = False
+    send_precondition_failed: bool = False
     sent: bool = False
     exception: URLTokenizerError | None = None
     log: Log | None = None
@@ -67,7 +67,7 @@ class URLToken:
                 name=self.name,
                 phone=self.phone,
                 channel=self.channel,
-                precondition_failed=self.precondition_failed,
+                send_precondition_failed=self.send_precondition_failed,
                 sent=self.sent,
                 errors=self.exception.__repr__() if self.exception else None,
                 user=self.user,
@@ -187,7 +187,7 @@ class URLTokenizer:
                     pred=pred,
                 )
 
-            url_token.precondition_failed = url_token.exception is None
+            url_token.send_precondition_failed = url_token.exception is None
             if self.logging_enabled:
                 url_token._log()
 

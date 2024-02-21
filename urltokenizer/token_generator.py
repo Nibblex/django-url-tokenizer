@@ -7,7 +7,6 @@ from typing import Any
 
 from django.conf import settings
 from django.db.utils import ProgrammingError
-from django.utils import timezone
 from django.utils.crypto import constant_time_compare, salted_hmac
 from django.utils.encoding import force_bytes
 from django.utils.http import base36_to_int, int_to_base36
@@ -87,10 +86,26 @@ class TokenGenerator:
 
     # helpers
 
-    def _validate_preconditions(self, user: object, fail_silently: bool = False) -> bool:
+    def _get_log(self, user: object, token: str) -> Log | None:
+        uidb64 = encode(getattr(user, self.encoding_field))
+        hash = hashlib.sha256(force_bytes(uidb64 + token)).hexdigest()
+
+        try:
+            log = Log.objects.filter(hash=hash).last()
+        except ProgrammingError:
+            return None
+
+        return log
+
+    def _validate_preconditions(
+        self, user: object, token: str, fail_silently: bool = False
+    ) -> bool:
         for pred in self.check_preconditions:
             try:
                 if not pred(user):
+                    log = self._get_log(user, token)
+                    log.check_precondition_failed = True
+                    log.save(update_fields=["check_precondition_failed"])
                     return False
             except Exception as e:
                 if fail_silently:
@@ -103,22 +118,6 @@ class TokenGenerator:
                 ) from e
 
         return True
-
-    @staticmethod
-    def _check_log(uidb64: str, token: str) -> Log | None:
-        hash = hashlib.sha256(force_bytes(uidb64 + token)).hexdigest()
-        try:
-            log = Log.objects.filter(hash=hash).first()
-        except ProgrammingError:
-            return None
-
-        if log is None or log.checked:
-            return None
-
-        log.checked_at = timezone.now()
-        log.save(update_fields=["checked_at"])
-
-        return log
 
     def _update_user_data(
         self, user: object, user_data: dict[str, Any], fail_silently: bool = False
@@ -174,15 +173,17 @@ class TokenGenerator:
             return False, None
 
         # Check the preconditions
-        if not self._validate_preconditions(user, fail_silently):
+        if not self._validate_preconditions(user, token, fail_silently):
             return False, None
 
         # Check log
         log = None
         if self.check_logs:
-            log = self._check_log(encode(getattr(user, self.encoding_field)), token)
-            if log is None:
+            log = self._get_log(user, token)
+            if log is None or log.checked:
                 return False, None
+
+            log.check()
 
         # update user data
         if user_data and self.user_serializer:

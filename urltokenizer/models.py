@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 from .enums import Channel
 
@@ -15,7 +16,8 @@ class Log(models.Model):
     email = models.EmailField(null=True)
     phone = models.CharField(max_length=255, null=True)
     channel = models.CharField(max_length=255, choices=Channel.choices, null=True)
-    precondition_failed = models.BooleanField(default=False)
+    send_precondition_failed = models.BooleanField(default=False)
+    check_precondition_failed = models.BooleanField(default=False)
     sent = models.BooleanField(default=False)
     errors = models.CharField(max_length=255, null=True)
     user = models.ForeignKey(
@@ -25,3 +27,8 @@ class Log(models.Model):
     @property
     def checked(self) -> bool:
         return self.checked_at is not None
+
+    def check(self):
+        if not self.checked:
+            self.checked_at = timezone.now()
+            self.save(update_fields=["checked_at"])
