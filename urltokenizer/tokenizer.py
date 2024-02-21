@@ -159,6 +159,35 @@ class URLTokenizer:
 
         return token_config or TOKEN_CONFIG.get("default", {})
 
+    # helpers
+
+    def _validate_preconditions(
+        self, url_token: URLToken, fail_silently: bool = False
+    ) -> bool:
+        for pred in self.send_preconditions:
+            try:
+                if pred(url_token.user):
+                    continue
+
+            except Exception as e:
+                url_token.exception = URLTokenizerError(
+                    ErrorCode.send_precondition_execution_error,
+                    context={"exception": e},
+                    pred=pred,
+                )
+
+            url_token.precondition_failed = url_token.exception is None
+            if self.logging_enabled:
+                url_token._log()
+
+            if url_token.exception and not fail_silently:
+                from_exc = url_token.exception.context.get("exception")
+                raise url_token.exception from from_exc
+
+            return False
+
+        return True
+
     # main methods
 
     def generate_tokenized_link(
@@ -189,29 +218,8 @@ class URLTokenizer:
             user, self.token_type, email=email, name=name, phone=phone, channel=channel
         )
 
-        for pred in self.send_preconditions:
-            try:
-                url_token.precondition_failed = not pred(user)
-            except Exception as e:
-                url_token.precondition_failed = True
-                url_token.exception = URLTokenizerError(
-                    ErrorCode.send_precondition_execution_error,
-                    context={"exception": e},
-                    pred=pred,
-                )
-
-            if url_token.exception and not fail_silently:
-                if self.logging_enabled:
-                    url_token._log()
-
-                from_exc = url_token.exception.context.get("exception")
-                raise url_token.exception from from_exc
-
-            if url_token.precondition_failed:
-                if self.logging_enabled:
-                    url_token._log()
-
-                return url_token
+        if not self._validate_preconditions(url_token, fail_silently):
+            return url_token
 
         uidb64 = encode(getattr(user, self.encoding_field))
         token = self._token_generator.make_token(user)
