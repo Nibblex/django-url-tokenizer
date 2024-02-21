@@ -9,7 +9,9 @@ from django.utils.module_loading import import_string
 SETTINGS = getattr(settings, "URL_TOKENIZER_SETTINGS", {})
 
 
-def str_import(functions: list[str | Callable]) -> list[Callable]:
+def str_import(
+    functions: list[str | Callable[[object], bool]]
+) -> list[Callable[[object], bool]]:
     return [import_string(f) if isinstance(f, str) else f for f in functions]
 
 
