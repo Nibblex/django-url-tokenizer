@@ -96,6 +96,8 @@ class URLTokenizer:
 
         # token
         self.validate_token_type = SETTINGS.get("VALIDATE_TOKEN_TYPE", True)
+
+        # error handling
         self.fail_silently_on_generate = _from_config(
             token_config, "fail_silently_on_generate", False
         )
@@ -178,7 +180,6 @@ class URLTokenizer:
             try:
                 if pred(url_token.user):
                     continue
-
             except Exception as e:
                 url_token.exception = URLTokenizerError(
                     ErrorCode.send_precondition_execution_error,

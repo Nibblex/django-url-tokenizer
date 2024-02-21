@@ -87,6 +87,23 @@ class TokenGenerator:
 
     # helpers
 
+    def _validate_preconditions(self, user: object, fail_silently: bool = False) -> bool:
+        for pred in self.check_preconditions:
+            try:
+                if not pred(user):
+                    return False
+            except Exception as e:
+                if fail_silently:
+                    return False
+
+                raise URLTokenizerError(
+                    ErrorCode.check_precondition_execution_error,
+                    context={"exception": e},
+                    pred=pred,
+                ) from e
+
+        return True
+
     @staticmethod
     def _check_log(uidb64: str, token: str) -> Log | None:
         hash = hashlib.sha256(force_bytes(uidb64 + token)).hexdigest()
@@ -157,19 +174,8 @@ class TokenGenerator:
             return False, None
 
         # Check the preconditions
-        for pred in self.check_preconditions:
-            try:
-                if not pred(user):
-                    return False, None
-            except Exception as e:
-                if fail_silently:
-                    return False, None
-
-                raise URLTokenizerError(
-                    ErrorCode.check_precondition_execution_error,
-                    context={"exception": e},
-                    pred=pred,
-                ) from e
+        if not self._validate_preconditions(user, fail_silently):
+            return False, None
 
         # Check log
         log = None

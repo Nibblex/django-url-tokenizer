@@ -14,7 +14,7 @@ class URLTokenizerQueryset(models.QuerySet):
         super().__init__(*args, **kwargs)
 
         # Check if the QuerySet's model is the auth user model
-        if self.model != get_user_model():
+        if self.model and self.model != get_user_model():
             raise ImproperlyConfigured(
                 _("URLTokenizerManager must be used with the auth user model")
             )
