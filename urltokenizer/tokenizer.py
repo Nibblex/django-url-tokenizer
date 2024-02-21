@@ -3,7 +3,7 @@ import threading
 from collections.abc import Iterable
 from contextlib import suppress
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any
 
@@ -235,7 +235,9 @@ class URLTokenizer:
         token, ts = self._token_generator.make_token(user)
         link = f"{protocol}://{domain}:{port}/{self.path}?uid={uidb64}&key={token}"
         hash = hashlib.sha256(force_bytes(uidb64 + token)).hexdigest()
-        expires_at = timezone.make_aware(ts) + self._token_generator.timeout
+        expires_at = timezone.make_aware(ts) + timedelta(
+            seconds=self._token_generator.timeout
+        )
 
         url_token = url_token._(
             uidb64=uidb64, token=token, link=link, hash=hash, expires_at=expires_at
