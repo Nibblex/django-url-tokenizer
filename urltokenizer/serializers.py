@@ -7,7 +7,7 @@ from django.utils.translation import gettext_lazy as _
 
 from .enums import Channel
 from .tokenizer import URLTokenizer
-from .utils import SETTINGS, from_config
+from .utils import SETTINGS, _from_config
 
 User = get_user_model()
 
@@ -29,8 +29,8 @@ class SendTokenSerializer(ChannelSerializer):
                 _("Either 'email' or 'phone' is required for sending token.")
             )
 
-        email_field = from_config(SETTINGS, "email_field", "email")
-        phone_field = from_config(SETTINGS, "phone_field", "phone")
+        email_field = _from_config(SETTINGS, "email_field", "email")
+        phone_field = _from_config(SETTINGS, "phone_field", "phone")
 
         # user lookup
 

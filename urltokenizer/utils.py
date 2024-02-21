@@ -9,14 +9,14 @@ from django.utils.module_loading import import_string
 SETTINGS = getattr(settings, "URL_TOKENIZER_SETTINGS", {})
 
 
-def str_import(
+def _from_config(config: dict[str, Any], key: str, default: Any) -> Any:
+    return config.get(key, SETTINGS.get(key.upper(), default))
+
+
+def _str_import(
     functions: list[str | Callable[[object], bool]]
 ) -> list[Callable[[object], bool]]:
     return [import_string(f) if isinstance(f, str) else f for f in functions]
-
-
-def from_config(config: dict[str, Any], key: str, default: Any) -> Any:
-    return config.get(key, SETTINGS.get(key.upper(), default))
 
 
 def encode(s: Any) -> str:

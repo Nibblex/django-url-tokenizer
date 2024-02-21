@@ -20,7 +20,7 @@ from .enums import Channel
 from .exceptions import ErrorCode, URLTokenizerError
 from .models import Log
 from .token_generator import TokenGenerator
-from .utils import SETTINGS, decode, encode, from_config, str_import
+from .utils import SETTINGS, _from_config, _str_import, decode, encode
 
 try:
     from sms import send_sms
@@ -94,36 +94,44 @@ class URLTokenizer:
 
         # token
         self.validate_token_type = SETTINGS.get("VALIDATE_TOKEN_TYPE", True)
-        self.fail_silently = from_config(token_config, "fail_silently", False)
+        self.fail_silently_on_generate = _from_config(
+            token_config, "fail_silently_on_generate", False
+        )
+        self.fail_silently_on_check = _from_config(
+            token_config, "fail_silently_on_check", False
+        )
+        self.fail_silently_on_callbacks = _from_config(
+            token_config, "fail_silently_on_callbacks", False
+        )
 
         # logging
-        self.logging_enabled = from_config(token_config, "logging_enabled", False)
+        self.logging_enabled = _from_config(token_config, "logging_enabled", False)
 
         # url
-        self.path = from_config(token_config, "path", "").strip("/")
-        self.domain = from_config(token_config, "domain", "localhost")
-        self.protocol = from_config(token_config, "protocol", "http")
-        self.port = from_config(token_config, "port", "80")
+        self.path = _from_config(token_config, "path", "").strip("/")
+        self.domain = _from_config(token_config, "domain", "localhost")
+        self.protocol = _from_config(token_config, "protocol", "http")
+        self.port = _from_config(token_config, "port", "80")
 
         # sending
-        self.send_enabled = from_config(token_config, "send_enabled", False)
-        self.channel = from_config(token_config, "channel", None)
-        self.send_preconditions = str_import(
+        self.send_enabled = _from_config(token_config, "send_enabled", False)
+        self.channel = _from_config(token_config, "channel", None)
+        self.send_preconditions = _str_import(
             SETTINGS.get("SEND_PRECONDITIONS", [])
             + token_config.get("send_preconditions", [])
         )
 
         # email
-        self.email_field = from_config(token_config, "email_field", "email")
-        self.name_field = from_config(token_config, "name_field", "name")
-        self.email_subject = from_config(
+        self.email_field = _from_config(token_config, "email_field", "email")
+        self.name_field = _from_config(token_config, "name_field", "name")
+        self.email_subject = _from_config(
             token_config,
             "email_subject",
             "link generated with django-url-tokenizer",
         )
 
         # sms
-        self.phone_field = from_config(token_config, "phone_field", "phone")
+        self.phone_field = _from_config(token_config, "phone_field", "phone")
 
     # initialization
 
@@ -209,7 +217,7 @@ class URLTokenizer:
         email_subject = email_subject or self.email_subject
 
         if fail_silently is None:
-            fail_silently = self.fail_silently
+            fail_silently = self.fail_silently_on_generate
 
         email = str(getattr(user, self.email_field, "") or "")
         name = str(getattr(user, self.name_field, "") or "")
@@ -277,7 +285,7 @@ class URLTokenizer:
         fail_silently: bool | None = None,
     ) -> list[URLToken]:
         if fail_silently is None:
-            fail_silently = self.fail_silently
+            fail_silently = self.fail_silently_on_generate
 
         url_tokens, threads = [], []
 
@@ -318,7 +326,7 @@ class URLTokenizer:
         fail_silently: bool | None = None,
     ) -> tuple[object | None, Log | None]:
         if fail_silently is None:
-            fail_silently = self.fail_silently
+            fail_silently = self.fail_silently_on_check
 
         # decode uidb64
         try:
@@ -349,7 +357,7 @@ class URLTokenizer:
         fail_silently: bool | None = None,
     ) -> dict[str, list[Any]]:
         if fail_silently is None:
-            fail_silently = self.fail_silently
+            fail_silently = self.fail_silently_on_callbacks
 
         callbacks_returns = self._token_generator.run_callbacks(
             user, callback_kwargs=callback_kwargs, fail_silently=fail_silently
