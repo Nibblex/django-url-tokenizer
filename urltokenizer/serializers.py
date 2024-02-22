@@ -6,6 +6,7 @@ from django.shortcuts import get_object_or_404
 from django.utils.translation import gettext_lazy as _
 
 from .enums import Channel
+from .models import Log
 from .tokenizer import URLTokenizer
 from .utils import SETTINGS, _from_config
 
@@ -67,8 +68,12 @@ class SendTokenSerializer(ChannelSerializer):
 
 
 class BulkSendTokenSerializer(ChannelSerializer):
-    emails = serializers.ListField(child=serializers.EmailField(), required=False)
-    phones = serializers.ListField(child=serializers.CharField(), required=False)
+    emails = serializers.ListField(
+        child=serializers.EmailField(), required=False, write_only=True
+    )
+    phones = serializers.ListField(
+        child=serializers.CharField(), required=False, write_only=True
+    )
     sent = serializers.JSONField(read_only=True, default=dict)
     precondition_failed = serializers.JSONField(read_only=True, default=dict)
     errors = serializers.JSONField(read_only=True, default=dict)
@@ -160,3 +165,9 @@ class CheckTokenSerializer(serializers.Serializer):
         )
 
         return validated_data
+
+
+class LogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Log
+        fields = "__all__"

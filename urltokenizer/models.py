@@ -6,22 +6,24 @@ from .enums import Channel
 
 
 class Log(models.Model):
-    created_at = models.DateTimeField(null=True)
-    checked_at = models.DateTimeField(null=True)
-    expires_at = models.DateTimeField(null=True)
-    token_type = models.CharField(max_length=255, null=True)
-    uidb64 = models.CharField(max_length=255, null=True)
-    hash = models.CharField(max_length=255, unique=True, null=True)
-    name = models.CharField(max_length=255, null=True)
-    email = models.EmailField(null=True)
-    phone = models.CharField(max_length=255, null=True)
-    channel = models.CharField(max_length=255, choices=Channel.choices, null=True)
-    send_precondition_failed = models.BooleanField(default=False)
-    check_precondition_failed = models.BooleanField(default=False)
-    sent = models.BooleanField(default=False)
-    errors = models.CharField(max_length=255, null=True)
+    created_at = models.DateTimeField(null=True, editable=False)
+    checked_at = models.DateTimeField(null=True, editable=False)
+    expires_at = models.DateTimeField(null=True, editable=False)
+    token_type = models.CharField(max_length=255, null=True, editable=False)
+    uidb64 = models.CharField(max_length=255, null=True, editable=False)
+    hash = models.CharField(max_length=255, unique=True, null=True, editable=False)
+    name = models.CharField(max_length=255, null=True, editable=False)
+    email = models.EmailField(null=True, editable=False)
+    phone = models.CharField(max_length=255, null=True, editable=False)
+    channel = models.CharField(
+        max_length=255, choices=Channel.choices, null=True, editable=False
+    )
+    send_precondition_failed = models.BooleanField(default=False, editable=False)
+    check_precondition_failed = models.BooleanField(default=False, editable=False)
+    sent = models.BooleanField(default=False, editable=False)
+    errors = models.CharField(max_length=255, null=True, editable=False)
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, editable=False
     )
 
     @property
