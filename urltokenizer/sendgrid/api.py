@@ -3,12 +3,8 @@ import json
 import mimetypes
 from os import getenv
 from typing import Any
-from urllib.error import URLError
-
-from requests.exceptions import HTTPError
 
 try:
-    from python_http_client.exceptions import BadRequestsError
     from sendgrid import SendGridAPIClient
 
     HAS_SENDGRID = True
@@ -95,7 +91,7 @@ class SendgridAPI:
         # Send
         try:
             response = self.client.send(message)
-        except (BadRequestsError, HTTPError, URLError) as e:
+        except Exception as e:
             if fail_silently:
                 return 0
 

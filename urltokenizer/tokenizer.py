@@ -197,6 +197,41 @@ class URLTokenizer:
 
         return True
 
+    def _send_link(
+        self,
+        url_token: URLToken,
+        email_subject: str | None = None,
+        fail_silently: bool = False,
+    ) -> URLToken:
+        if url_token.channel == Channel.EMAIL:
+            if url_token.email:
+                sent = send_mail(
+                    subject=email_subject,
+                    message=url_token.link,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[url_token.email],
+                    fail_silently=fail_silently,
+                )
+                url_token.sent = sent > 0
+
+            else:
+                url_token.exception = URLTokenizerError(ErrorCode.no_email)
+
+        elif url_token.channel == Channel.SMS and HAS_SMS:
+            if url_token.phone:
+                sent = send_sms(
+                    body=url_token.link,
+                    originator=settings.DEFAULT_FROM_SMS,
+                    recipients=[url_token.phone],
+                    fail_silently=fail_silently,
+                )
+                url_token.sent = sent > 0
+
+            else:
+                url_token.exception = URLTokenizerError(ErrorCode.no_phone)
+
+        return url_token
+
     # main methods
 
     def generate_tokenized_link(
@@ -242,40 +277,14 @@ class URLTokenizer:
             uidb64=uidb64, token=token, link=link, hash=hash, expires_at=expires_at
         )
 
-        sent, exc = 0, None
         if self.send_enabled:
-            if channel == Channel.EMAIL:
-                if email:
-                    sent = send_mail(
-                        subject=email_subject,
-                        message=link,
-                        from_email=settings.DEFAULT_FROM_EMAIL,
-                        recipient_list=[email],
-                        fail_silently=fail_silently,
-                    )
-
-                else:
-                    exc = URLTokenizerError(ErrorCode.no_email)
-
-            elif channel == Channel.SMS and HAS_SMS:
-                if phone:
-                    sent = send_sms(
-                        body=link,
-                        originator=settings.DEFAULT_FROM_SMS,
-                        recipients=[phone],
-                        fail_silently=fail_silently,
-                    )
-
-                else:
-                    exc = URLTokenizerError(ErrorCode.no_phone)
-
-        url_token = url_token._(sent=sent > 0, exception=exc)
+            url_token = self._send_link(url_token, email_subject, fail_silently)
 
         if self.logging_enabled:
             url_token._log()
 
-        if exc and not fail_silently:
-            raise exc
+        if url_token.exc and not fail_silently:
+            raise url_token.exc
 
         return url_token
 
