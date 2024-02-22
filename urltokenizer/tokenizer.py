@@ -89,13 +89,11 @@ class URLTokenizer:
 
     def __init__(self, token_type: str | Enum | None = None):
         self.token_type = self._parse_token_type(token_type)
+        self.validate_token_type = SETTINGS.get("VALIDATE_TOKEN_TYPE", True)
         # at this point token_type is either None or a string
 
         token_config = self._get_token_config(SETTINGS, self.token_type)
         self._token_generator = TokenGenerator(token_config)
-
-        # token
-        self.validate_token_type = SETTINGS.get("VALIDATE_TOKEN_TYPE", True)
 
         # error handling
         self.fail_silently_on_generate = _from_config(
