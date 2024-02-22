@@ -283,8 +283,8 @@ class URLTokenizer:
         if self.logging_enabled:
             url_token._log()
 
-        if url_token.exc and not fail_silently:
-            raise url_token.exc
+        if url_token.exception and not fail_silently:
+            raise url_token.exception
 
         return url_token
 
