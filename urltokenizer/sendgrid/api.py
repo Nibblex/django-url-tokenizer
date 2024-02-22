@@ -11,28 +11,14 @@ try:
 except ImportError:
     HAS_SENDGRID = False
 
+SENDGRID_API_KEY = getenv("SENDGRID_API_KEY") if HAS_SENDGRID else None
+
 
 class SendgridAPI:
-    def __init__(
-        self,
-        api_key: str,
-        sender_name: str,
-        sender_email: str,
-    ):
-        self.api_key = api_key
+    def __init__(self, sender_name: str, sender_email: str):
         self.sender_name = sender_name
         self.sender_email = sender_email
-        self._client = self._create_client()
-
-    def _create_client(self):
-        if self.api_key and HAS_SENDGRID:
-            return SendGridAPIClient(self.api_key)
-
-        return None
-
-    @property
-    def client(self):
-        return self._client
+        self._client = SendGridAPIClient(SENDGRID_API_KEY) if SENDGRID_API_KEY else None
 
     @staticmethod
     def _validate_personalizations(personalizations: list):
@@ -42,7 +28,7 @@ class SendgridAPI:
 
         return personalizations
 
-    def sg_send_mail(
+    def send_mail(
         self,
         personalizations: list[dict[str, Any]],
         template_id: str,
@@ -101,10 +87,3 @@ class SendgridAPI:
             return sum([len(p["to"]) for p in personalizations])
 
         return 0
-
-
-sendgrid_api = SendgridAPI(
-    api_key=getenv("SENDGRID_API_KEY", ""),
-    sender_name=getenv("SENDGRID_SENDER_NAME", ""),
-    sender_email=getenv("SENDGRID_SENDER_EMAIL", ""),
-)

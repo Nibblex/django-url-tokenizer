@@ -1,4 +1,4 @@
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from enum import Enum
 from typing import Any
 
@@ -34,6 +34,10 @@ class URLTokenizerMixin:
         port: str | None = None,
         channel: Channel | None = None,
         email_subject: str | None = None,
+        template_id: str | None = None,
+        template_data: (
+            Callable[[URLToken], dict[str, Any]] | dict[str, Any] | None
+        ) = None,
         fail_silently: bool | None = None,
     ) -> URLToken:
         from .tokenizer import URLTokenizer
@@ -48,6 +52,8 @@ class URLTokenizerMixin:
             port=port,
             channel=channel,
             email_subject=email_subject,
+            template_id=template_id,
+            template_data=template_data,
             fail_silently=fail_silently,
         )
 
