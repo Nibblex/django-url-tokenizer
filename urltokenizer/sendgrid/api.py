@@ -76,7 +76,7 @@ class SendgridAPI:
 
         # Send
         try:
-            response = self.client.send(message)
+            response = self._client.send(message)
         except Exception as e:
             if fail_silently:
                 return 0

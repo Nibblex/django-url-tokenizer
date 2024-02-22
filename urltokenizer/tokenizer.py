@@ -216,7 +216,7 @@ class URLTokenizer:
     ) -> URLToken:
         if url_token.channel == Channel.EMAIL:
             if url_token.email:
-                if self._sendgrid_api._client:
+                if template_id and self._sendgrid_api._client:
                     if callable(template_data):
                         template_data = template_data(url_token)
 
