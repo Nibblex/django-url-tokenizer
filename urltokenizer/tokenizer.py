@@ -204,6 +204,22 @@ class URLTokenizer:
 
         return True
 
+    @staticmethod
+    def _parse_data(
+        url_token: URLToken,
+        data: dict[str, Any] | Callable[[URLToken], dict[str, Any]] | None,
+    ) -> dict[str, Any]:
+        if data is None:
+            return {}
+
+        if callable(data):
+            return data(url_token)
+
+        return {
+            key: value(url_token) if callable(value) else value
+            for key, value in data.items()
+        }
+
     def _send_link(
         self,
         url_token: URLToken,
@@ -215,50 +231,49 @@ class URLTokenizer:
         fail_silently: bool = False,
     ) -> URLToken:
         if url_token.channel == Channel.EMAIL:
-            if url_token.email:
-                if template_id and self._sendgrid_api._client:
-                    if callable(template_data):
-                        template_data = template_data(url_token)
+            if not url_token.email:
+                return url_token._(exception=URLTokenizerError(ErrorCode.no_email))
 
-                    personalizations = [
-                        {
-                            "to": [{"email": url_token.email, "name": url_token.name}],
-                            "dynamic_template_data": template_data,
-                        }
-                    ]
+            # sendgrid
+            if template_id and self._sendgrid_api._client:
+                template_data = self._parse_data(url_token, template_data)
 
-                    sent = self._sendgrid_api.send_mail(
-                        personalizations,
-                        template_id=template_id,
-                        fail_silently=fail_silently,
-                    )
+                personalizations = [
+                    {
+                        "to": [{"email": url_token.email, "name": url_token.name}],
+                        "dynamic_template_data": template_data,
+                    }
+                ]
 
-                else:
-                    sent = send_mail(
-                        subject=email_subject,
-                        message=url_token.link,
-                        from_email=settings.DEFAULT_FROM_EMAIL,
-                        recipient_list=[url_token.email],
-                        fail_silently=fail_silently,
-                    )
-
-                url_token.sent = sent > 0
-
-            else:
-                url_token.exception = URLTokenizerError(ErrorCode.no_email)
-
-        elif url_token.channel == Channel.SMS and HAS_SMS:
-            if url_token.phone:
-                sent = send_sms(
-                    body=url_token.link,
-                    originator=settings.DEFAULT_FROM_SMS,
-                    recipients=[url_token.phone],
+                sent = self._sendgrid_api.send_mail(
+                    personalizations,
+                    template_id=template_id,
                     fail_silently=fail_silently,
                 )
-                url_token.sent = sent > 0
 
+            # django send_mail
             else:
-                url_token.exception = URLTokenizerError(ErrorCode.no_phone)
+                sent = send_mail(
+                    subject=email_subject,
+                    message=url_token.link,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[url_token.email],
+                    fail_silently=fail_silently,
+                )
+
+            url_token.sent = sent > 0
+
+        elif url_token.channel == Channel.SMS and HAS_SMS:
+            if not url_token.phone:
+                return url_token._(exception=URLTokenizerError(ErrorCode.no_phone))
+
+            sent = send_sms(
+                body=url_token.link,
+                originator=settings.DEFAULT_FROM_SMS,
+                recipients=[url_token.phone],
+                fail_silently=fail_silently,
+            )
+            url_token.sent = sent > 0
 
         return url_token
 
