@@ -154,7 +154,7 @@ class TokenGenerator:
         """
         Check that a token is correct for a given user.
         """
-        if not (user and token):
+        if not user:
             return False, None
 
         # Parse the token

@@ -12,10 +12,12 @@ from .utils import SETTINGS, _from_config
 User = get_user_model()
 
 
+EMAIL_FIELD = _from_config(SETTINGS, "email_field", "email")
+PHONE_FIELD = _from_config(SETTINGS, "phone_field", "phone")
+
+
 class ChannelSerializer(serializers.Serializer):
-    channel = serializers.ChoiceField(
-        choices=Channel.choices, required=True, allow_blank=False
-    )
+    channel = serializers.ChoiceField(choices=Channel.choices, required=True)
 
 
 class SendTokenSerializer(ChannelSerializer):
@@ -29,13 +31,10 @@ class SendTokenSerializer(ChannelSerializer):
                 _("Either 'email' or 'phone' is required for sending token.")
             )
 
-        email_field = _from_config(SETTINGS, "email_field", "email")
-        phone_field = _from_config(SETTINGS, "phone_field", "phone")
-
         # user lookup
 
         self.context["user"] = get_object_or_404(
-            User, **{email_field: email} if email else {phone_field: phone}
+            User, **{EMAIL_FIELD: email} if email else {PHONE_FIELD: phone}
         )
 
         return data
@@ -67,6 +66,60 @@ class SendTokenSerializer(ChannelSerializer):
         return validated_data
 
 
+class BulkSendTokenSerializer(ChannelSerializer):
+    emails = serializers.ListField(child=serializers.EmailField(), required=False)
+    phones = serializers.ListField(child=serializers.CharField(), required=False)
+    sent = serializers.JSONField(read_only=True, default=dict)
+    precondition_failed = serializers.JSONField(read_only=True, default=dict)
+    errors = serializers.JSONField(read_only=True, default=dict)
+
+    def validate(self, data):
+        emails, phones = data.get("emails"), data.get("phones")
+        if not emails and not phones:
+            raise serializers.ValidationError(
+                _("Either 'emails' or 'phones' is required for sending token.")
+            )
+
+        self.context["users"] = User.objects.filter(
+            **{f"{EMAIL_FIELD}__in": emails} if emails else {f"{PHONE_FIELD}__in": phones}
+        )
+
+        return data
+
+    def create(self, validated_data):
+        view = self.context["view"]
+
+        token_type_url_kwarg = getattr(view, "token_type_url_kwarg", "type")
+        assert token_type_url_kwarg in view.kwargs, _(
+            "Expected view %s to be called with a URL keyword argument "
+            "named 'type'. Fix your URL conf, or set the `.token_type_url_kwarg` "
+            "attribute on the view correctly." % view.__class__.__name__
+        )
+
+        tokenizer = URLTokenizer(view.kwargs[token_type_url_kwarg])
+
+        users = self.context.get("users")
+        channel = validated_data.get("channel")
+        fail_silently = self.context.get("fail_silently")
+
+        # send tokens
+
+        url_tokens = tokenizer.bulk_generate_tokenized_link(
+            users, channel=channel, fail_silently=fail_silently
+        )
+
+        for url_token in url_tokens:
+            to = url_token.email if channel == Channel.EMAIL else url_token.phone
+            if url_token.exception:
+                validated_data["errors"][to] = url_token.log.pk
+            elif url_token.precondition_failed:
+                validated_data["precondition_failed"][to] = url_token.log.pk
+            else:
+                validated_data["sent"][to] = url_token.log.pk
+
+        return validated_data
+
+
 class CheckTokenSerializer(serializers.Serializer):
     uidb64 = serializers.CharField(required=True)
     token = serializers.CharField(required=True)
@@ -92,7 +145,7 @@ class CheckTokenSerializer(serializers.Serializer):
         uidb64, token = validated_data["uidb64"], validated_data["token"]
         user_data = validated_data["user_data"]
         user, log = tokenizer.check_token(
-            uidb64, token, user_data, fail_silently=fail_silently
+            uidb64, token, user_data=user_data, fail_silently=fail_silently
         )
         if user is None:
             raise AuthenticationFailed(_("The token is invalid or has expired."))
