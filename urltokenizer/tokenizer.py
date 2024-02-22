@@ -314,7 +314,9 @@ class URLTokenizer:
         )
 
         if self.send_enabled:
-            url_token = self._send_link(url_token, email_subject, fail_silently)
+            url_token = self._send_link(
+                url_token, email_subject, template_id, template_data, fail_silently
+            )
 
         if self.logging_enabled:
             url_token._log()
