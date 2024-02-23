@@ -38,6 +38,7 @@ class URLTokenizerMixin:
         template_data: (
             Callable[[URLToken], dict[str, Any]] | dict[str, Any] | None
         ) = None,
+        plain_content: str | None = None,
         fail_silently: bool | None = None,
     ) -> URLToken:
         from .tokenizer import URLTokenizer
@@ -54,6 +55,7 @@ class URLTokenizerMixin:
             email_subject=email_subject,
             template_id=template_id,
             template_data=template_data,
+            plain_content=plain_content,
             fail_silently=fail_silently,
         )
 

@@ -7,6 +7,8 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any
 
+from jinja2 import Template as JinjaTemplate
+
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ImproperlyConfigured
@@ -220,6 +222,12 @@ class URLTokenizer:
             for key, value in data.items()
         }
 
+    @staticmethod
+    def _render(plain_content: str, context: dict[str, Any]) -> str:
+        return JinjaTemplate(
+            plain_content.replace("{{{", "{{").replace("}}}", "}}")
+        ).render(context)
+
     def _send_link(
         self,
         url_token: URLToken,
@@ -228,16 +236,18 @@ class URLTokenizer:
         template_data: (
             dict[str, Any] | Callable[[URLToken], dict[str, Any]] | None
         ) = None,
+        plain_content: str | None = None,
         fail_silently: bool = False,
     ) -> URLToken:
+        template_data = self._parse_data(url_token, template_data)
+        message = self._render(plain_content, template_data) if plain_content else None
+
         if url_token.channel == Channel.EMAIL:
             if not url_token.email:
                 return url_token._(exception=URLTokenizerError(ErrorCode.no_email))
 
             # sendgrid
             if template_id and self._sendgrid_api._client:
-                template_data = self._parse_data(url_token, template_data)
-
                 personalizations = [
                     {
                         "to": [{"email": url_token.email, "name": url_token.name}],
@@ -255,7 +265,7 @@ class URLTokenizer:
             else:
                 sent = send_mail(
                     subject=email_subject,
-                    message=url_token.link,
+                    message=message or url_token.link,
                     from_email=settings.DEFAULT_FROM_EMAIL,
                     recipient_list=[url_token.email],
                     fail_silently=fail_silently,
@@ -268,7 +278,7 @@ class URLTokenizer:
                 return url_token._(exception=URLTokenizerError(ErrorCode.no_phone))
 
             sent = send_sms(
-                body=url_token.link,
+                body=message or url_token.link,
                 originator=settings.DEFAULT_FROM_SMS,
                 recipients=[url_token.phone],
                 fail_silently=fail_silently,
@@ -292,6 +302,7 @@ class URLTokenizer:
         template_data: (
             Callable[[URLToken], dict[str, Any]] | dict[str, Any] | None
         ) = None,
+        plain_content: str | None = None,
         fail_silently: bool | None = None,
     ) -> URLToken:
         path = path or self.path
@@ -330,7 +341,12 @@ class URLTokenizer:
 
         if self.send_enabled:
             url_token = self._send_link(
-                url_token, email_subject, template_id, template_data, fail_silently
+                url_token,
+                email_subject=email_subject,
+                template_id=template_id,
+                template_data=template_data,
+                plain_content=plain_content,
+                fail_silently=fail_silently,
             )
 
         if self.logging_enabled:
