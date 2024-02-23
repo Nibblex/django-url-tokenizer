@@ -54,12 +54,21 @@ class SendTokenSerializer(ChannelSerializer):
 
         user = self.context.get("user")
         channel = validated_data.get("channel")
-        fail_silently = self.context.get("fail_silently")
 
         # send token
 
         url_token = tokenizer.generate_tokenized_link(
-            user, channel=channel, fail_silently=fail_silently
+            user,
+            path=self.context.get("path"),
+            domain=self.context.get("domain"),
+            protocol=self.context.get("protocol"),
+            port=self.context.get("port"),
+            channel=channel,
+            plain_content=self.context.get("plain_content"),
+            template_data=self.context.get("template_data"),
+            email_subject=self.context.get("email_subject"),
+            template_id=self.context.get("template_id"),
+            fail_silently=self.context.get("fail_silently"),
         )
         if url_token.exception:
             raise serializers.ValidationError(url_token.exception)
@@ -105,12 +114,21 @@ class BulkSendTokenSerializer(ChannelSerializer):
 
         users = self.context.get("users")
         channel = validated_data.get("channel")
-        fail_silently = self.context.get("fail_silently")
 
         # send tokens
 
         url_tokens = tokenizer.bulk_generate_tokenized_link(
-            users, channel=channel, fail_silently=fail_silently
+            users,
+            path=self.context.get("path"),
+            domain=self.context.get("domain"),
+            protocol=self.context.get("protocol"),
+            port=self.context.get("port"),
+            channel=channel,
+            plain_content=self.context.get("plain_content"),
+            template_data=self.context.get("template_data"),
+            email_subject=self.context.get("email_subject"),
+            template_id=self.context.get("template_id"),
+            fail_silently=self.context.get("fail_silently"),
         )
 
         for url_token in url_tokens:
