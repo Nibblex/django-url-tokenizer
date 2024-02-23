@@ -1,4 +1,6 @@
+from collections.abc import Callable
 from enum import Enum
+from typing import Any
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ImproperlyConfigured
@@ -27,7 +29,12 @@ class URLTokenizerQueryset(models.QuerySet):
         protocol: str | None = None,
         port: str | None = None,
         channel: Channel | None = None,
+        plain_content: str | None = None,
+        template_data: (
+            Callable[[URLToken], dict[str, Any]] | dict[str, Any] | None
+        ) = None,
         email_subject: str | None = None,
+        template_id: str | None = None,
         fail_silently: bool | None = None,
     ) -> list[URLToken]:
         from .tokenizer import URLTokenizer
@@ -40,9 +47,12 @@ class URLTokenizerQueryset(models.QuerySet):
             domain=domain,
             protocol=protocol,
             port=port,
-            email_subject=email_subject,
-            fail_silently=fail_silently,
             channel=channel,
+            plain_content=plain_content,
+            template_data=template_data,
+            email_subject=email_subject,
+            template_id=template_id,
+            fail_silently=fail_silently,
         )
 
 

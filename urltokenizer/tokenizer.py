@@ -95,22 +95,9 @@ class URLTokenizer:
         self.validate_token_type = SETTINGS.get("VALIDATE_TOKEN_TYPE", True)
         # at this point token_type is either None or a string
 
+        # token
         token_config = self._get_token_config(SETTINGS, self.token_type)
         self._token_generator = TokenGenerator(token_config)
-
-        # error handling
-        self.fail_silently_on_generate = _from_config(
-            token_config, "fail_silently_on_generate", False
-        )
-        self.fail_silently_on_check = _from_config(
-            token_config, "fail_silently_on_check", False
-        )
-        self.fail_silently_on_callbacks = _from_config(
-            token_config, "fail_silently_on_callbacks", False
-        )
-
-        # logging
-        self.logging_enabled = _from_config(token_config, "logging_enabled", False)
 
         # url
         self.path = _from_config(token_config, "path", "").strip("/")
@@ -125,6 +112,8 @@ class URLTokenizer:
             SETTINGS.get("SEND_PRECONDITIONS", [])
             + token_config.get("send_preconditions", [])
         )
+        self.plain_content = _from_config(token_config, "plain_content", None)
+        self.template_data = _from_config(token_config, "template_data", {})
 
         # email
         self.email_field = _from_config(token_config, "email_field", "email")
@@ -136,13 +125,27 @@ class URLTokenizer:
         )
 
         # sendgrid
+        self._sendgrid_api = SendgridAPI(
+            _from_config(token_config, "sender_name", None), settings.DEFAULT_FROM_EMAIL
+        )
         self.sg_template_id = _from_config(token_config, "template_id", None)
-        self.sg_template_data = _from_config(token_config, "template_data", {})
-        self.sg_sender_name = _from_config(token_config, "sender_name", None)
-        self._sendgrid_api = SendgridAPI(self.sg_sender_name, settings.DEFAULT_FROM_EMAIL)
 
         # sms
         self.phone_field = _from_config(token_config, "phone_field", "phone")
+
+        # logging
+        self.logging_enabled = _from_config(token_config, "logging_enabled", False)
+
+        # error handling
+        self.fail_silently_on_generate = _from_config(
+            token_config, "fail_silently_on_generate", False
+        )
+        self.fail_silently_on_check = _from_config(
+            token_config, "fail_silently_on_check", False
+        )
+        self.fail_silently_on_callbacks = _from_config(
+            token_config, "fail_silently_on_callbacks", False
+        )
 
     # initialization
 
@@ -231,12 +234,12 @@ class URLTokenizer:
     def _send_link(
         self,
         url_token: URLToken,
-        email_subject: str | None = None,
-        template_id: str | None = None,
+        plain_content: str | None = None,
         template_data: (
             dict[str, Any] | Callable[[URLToken], dict[str, Any]] | None
         ) = None,
-        plain_content: str | None = None,
+        email_subject: str | None = None,
+        template_id: str | None = None,
         fail_silently: bool = False,
     ) -> URLToken:
         template_data = self._parse_data(url_token, template_data)
@@ -297,12 +300,12 @@ class URLTokenizer:
         protocol: str | None = None,
         port: str | None = None,
         channel: Channel | None = None,
-        email_subject: str | None = None,
-        template_id: str | None = None,
+        plain_content: str | None = None,
         template_data: (
             Callable[[URLToken], dict[str, Any]] | dict[str, Any] | None
         ) = None,
-        plain_content: str | None = None,
+        email_subject: str | None = None,
+        template_id: str | None = None,
         fail_silently: bool | None = None,
     ) -> URLToken:
         path = path or self.path
@@ -310,10 +313,10 @@ class URLTokenizer:
         protocol = protocol or self.protocol
         port = port or self.port
         channel = channel or self.channel
+        plain_content = plain_content or self.plain_content
+        template_data = template_data or self.template_data
         email_subject = email_subject or self.email_subject
         template_id = template_id or self.sg_template_id
-        template_data = template_data or self.sg_template_data
-
         if fail_silently is None:
             fail_silently = self.fail_silently_on_generate
 
@@ -342,10 +345,10 @@ class URLTokenizer:
         if self.send_enabled:
             url_token = self._send_link(
                 url_token,
+                plain_content=plain_content,
+                template_data=template_data,
                 email_subject=email_subject,
                 template_id=template_id,
-                template_data=template_data,
-                plain_content=plain_content,
                 fail_silently=fail_silently,
             )
 
@@ -365,7 +368,12 @@ class URLTokenizer:
         protocol: str | None = None,
         port: str | None = None,
         channel: Channel | None = None,
+        plain_content: str | None = None,
+        template_data: (
+            Callable[[URLToken], dict[str, Any]] | dict[str, Any] | None
+        ) = None,
         email_subject: str | None = None,
+        template_id: str | None = None,
         fail_silently: bool | None = None,
     ) -> list[URLToken]:
         if fail_silently is None:
@@ -382,7 +390,10 @@ class URLTokenizer:
                 protocol=protocol,
                 port=port,
                 channel=channel,
+                plain_content=plain_content,
+                template_data=template_data,
                 email_subject=email_subject,
+                template_id=template_id,
                 fail_silently=fail_silently,
             )
             url_tokens.append(url_token)
