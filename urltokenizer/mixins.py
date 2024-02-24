@@ -1,4 +1,4 @@
-from collections.abc import Callable, Iterable
+from collections.abc import Iterable
 from enum import Enum
 from typing import Any
 
@@ -9,7 +9,7 @@ from django.utils.translation import gettext_lazy as _
 from .enums import Channel
 from .models import Log
 from .tokenizer import URLToken
-from .utils import encode
+from .utils import Template, encode
 
 
 class URLTokenizerMixin:
@@ -33,12 +33,8 @@ class URLTokenizerMixin:
         protocol: str | None = None,
         port: str | None = None,
         channel: Channel | None = None,
+        template: Template | None = None,
         email_subject: str | None = None,
-        template_id: str | None = None,
-        plain_content: str | None = None,
-        template_data: (
-            Callable[[URLToken], dict[str, Any]] | dict[str, Any] | None
-        ) = None,
         fail_silently: bool | None = None,
     ) -> URLToken:
         from .tokenizer import URLTokenizer
@@ -52,10 +48,8 @@ class URLTokenizerMixin:
             protocol=protocol,
             port=port,
             channel=channel,
+            template=template,
             email_subject=email_subject,
-            template_id=template_id,
-            plain_content=plain_content,
-            template_data=template_data,
             fail_silently=fail_silently,
         )
 

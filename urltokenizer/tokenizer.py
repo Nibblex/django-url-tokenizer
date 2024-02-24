@@ -1,19 +1,14 @@
 import hashlib
 import threading
-from collections.abc import Callable, Iterable
-from contextlib import suppress
-from dataclasses import dataclass
-from datetime import datetime, timedelta
+from collections.abc import Iterable
+from datetime import timedelta
 from enum import Enum
 from typing import Any
-
-from jinja2 import Template as JinjaTemplate
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ImproperlyConfigured
 from django.core.mail import send_mail
-from django.db.utils import ProgrammingError
 from django.utils import timezone
 from django.utils.encoding import DjangoUnicodeDecodeError, force_bytes
 from django.utils.translation import gettext_lazy as _
@@ -23,7 +18,15 @@ from .exceptions import ErrorCode, URLTokenizerError
 from .models import Log
 from .sendgrid.api import SendgridAPI
 from .token_generator import TokenGenerator
-from .utils import SETTINGS, _from_config, _str_import, decode, encode
+from .utils import (
+    SETTINGS,
+    Template,
+    URLToken,
+    _from_config,
+    _str_import,
+    decode,
+    encode,
+)
 
 try:
     from sms import send_sms
@@ -31,54 +34,6 @@ try:
     HAS_SMS = True
 except ImportError:
     HAS_SMS = False
-
-
-@dataclass
-class URLToken:
-    user: object
-    type: str
-    created_at: datetime = timezone.now()
-    expires_at: datetime | None = None
-    uidb64: str = ""
-    token: str = ""
-    link: str = ""
-    hash: str | None = None
-    email: str = ""
-    name: str = ""
-    phone: str = ""
-    channel: Channel | None = None
-    precondition_failed: bool = False
-    sent: bool = False
-    exception: URLTokenizerError | None = None
-    log: Log | None = None
-
-    def _(self, **kwargs):
-        for key, value in kwargs.items():
-            setattr(self, key, value)
-
-        return self
-
-    def _log(self) -> Log | None:
-        with suppress(ProgrammingError):
-            self.log = Log.objects.create(
-                created_at=self.created_at,
-                expires_at=self.expires_at,
-                token_type=self.type,
-                uidb64=self.uidb64,
-                hash=self.hash,
-                email=self.email,
-                name=self.name,
-                phone=self.phone,
-                channel=self.channel,
-                send_precondition_failed=self.precondition_failed,
-                sent=self.sent,
-                errors=self.exception.__repr__() if self.exception else None,
-                user=self.user,
-            )
-
-            return self.log
-
-        return None
 
 
 class URLTokenizer:
@@ -112,8 +67,12 @@ class URLTokenizer:
             SETTINGS.get("SEND_PRECONDITIONS", [])
             + token_config.get("send_preconditions", [])
         )
-        self.plain_content = _from_config(token_config, "plain_content", None)
-        self.template_data = _from_config(token_config, "template_data", {})
+
+        # template
+        template_id = _from_config(token_config, "template_id", None)
+        plain_content = _from_config(token_config, "plain_content", "")
+        template_data = _from_config(token_config, "template_data", {})
+        self.template = Template(plain_content, template_id, template_data)
 
         # email
         self.email_field = _from_config(token_config, "email_field", "email")
@@ -128,7 +87,6 @@ class URLTokenizer:
         self._sendgrid_api = SendgridAPI(
             _from_config(token_config, "sender_name", None), settings.DEFAULT_FROM_EMAIL
         )
-        self.sg_template_id = _from_config(token_config, "template_id", None)
 
         # sms
         self.phone_field = _from_config(token_config, "phone_field", "phone")
@@ -139,6 +97,9 @@ class URLTokenizer:
         # error handling
         self.fail_silently_on_generate = _from_config(
             token_config, "fail_silently_on_generate", False
+        )
+        self.fail_silently_on_bulk_generate = _from_config(
+            token_config, "fail_silently_on_bulk_generate", False
         )
         self.fail_silently_on_check = _from_config(
             token_config, "fail_silently_on_check", False
@@ -209,58 +170,31 @@ class URLTokenizer:
 
         return True
 
-    @staticmethod
-    def _parse_data(
-        url_token: URLToken,
-        data: dict[str, Any] | Callable[[URLToken], dict[str, Any]] | None,
-    ) -> dict[str, Any]:
-        if data is None:
-            return {}
-
-        if callable(data):
-            return data(url_token)
-
-        return {
-            key: value(url_token) if callable(value) else value
-            for key, value in data.items()
-        }
-
-    @staticmethod
-    def _render(plain_content: str, context: dict[str, Any]) -> str:
-        return JinjaTemplate(
-            plain_content.replace("{{{", "{{").replace("}}}", "}}")
-        ).render(context)
-
     def _send_link(
         self,
         url_token: URLToken,
-        plain_content: str | None = None,
-        template_data: (
-            dict[str, Any] | Callable[[URLToken], dict[str, Any]] | None
-        ) = None,
+        template: Template | None = None,
         email_subject: str | None = None,
-        template_id: str | None = None,
         fail_silently: bool = False,
     ) -> URLToken:
-        template_data = self._parse_data(url_token, template_data)
-        message = self._render(plain_content, template_data) if plain_content else None
+        message = template.render(url_token) if template else None
 
         if url_token.channel == Channel.EMAIL:
             if not url_token.email:
                 return url_token._(exception=URLTokenizerError(ErrorCode.no_email))
 
             # sendgrid
-            if template_id and self._sendgrid_api._client:
+            if template.id and self._sendgrid_api._client:
                 personalizations = [
                     {
                         "to": [{"email": url_token.email, "name": url_token.name}],
-                        "dynamic_template_data": template_data,
+                        "dynamic_template_data": template.get_template_data(url_token),
                     }
                 ]
 
                 sent = self._sendgrid_api.send_mail(
                     personalizations,
-                    template_id=template_id,
+                    template_id=template.id,
                     fail_silently=fail_silently,
                 )
 
@@ -300,12 +234,8 @@ class URLTokenizer:
         protocol: str | None = None,
         port: str | None = None,
         channel: Channel | None = None,
-        plain_content: str | None = None,
-        template_data: (
-            Callable[[URLToken], dict[str, Any]] | dict[str, Any] | None
-        ) = None,
+        template: Template | None = None,
         email_subject: str | None = None,
-        template_id: str | None = None,
         fail_silently: bool | None = None,
     ) -> URLToken:
         path = path or self.path
@@ -313,10 +243,8 @@ class URLTokenizer:
         protocol = protocol or self.protocol
         port = port or self.port
         channel = channel or self.channel
-        plain_content = plain_content or self.plain_content
-        template_data = template_data or self.template_data
+        template = template or self.template
         email_subject = email_subject or self.email_subject
-        template_id = template_id or self.sg_template_id
         if fail_silently is None:
             fail_silently = self.fail_silently_on_generate
 
@@ -345,10 +273,8 @@ class URLTokenizer:
         if self.send_enabled:
             url_token = self._send_link(
                 url_token,
-                plain_content=plain_content,
-                template_data=template_data,
+                template=template,
                 email_subject=email_subject,
-                template_id=template_id,
                 fail_silently=fail_silently,
             )
 
@@ -368,17 +294,10 @@ class URLTokenizer:
         protocol: str | None = None,
         port: str | None = None,
         channel: Channel | None = None,
-        plain_content: str | None = None,
-        template_data: (
-            Callable[[URLToken], dict[str, Any]] | dict[str, Any] | None
-        ) = None,
+        template: Template | None = None,
         email_subject: str | None = None,
-        template_id: str | None = None,
         fail_silently: bool | None = None,
     ) -> list[URLToken]:
-        if fail_silently is None:
-            fail_silently = self.fail_silently_on_generate
-
         url_tokens, threads = [], []
 
         # Define a helper function to execute generate_tokenized_link for each user
@@ -390,10 +309,8 @@ class URLTokenizer:
                 protocol=protocol,
                 port=port,
                 channel=channel,
-                plain_content=plain_content,
-                template_data=template_data,
+                template=template,
                 email_subject=email_subject,
-                template_id=template_id,
                 fail_silently=fail_silently,
             )
             url_tokens.append(url_token)
