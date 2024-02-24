@@ -2,6 +2,7 @@ from rest_framework import serializers
 from rest_framework.exceptions import AuthenticationFailed
 
 from django.contrib.auth import get_user_model
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.utils.translation import gettext_lazy as _
 
@@ -84,19 +85,6 @@ class BulkSendTokenSerializer(ChannelSerializer):
     precondition_failed = serializers.JSONField(read_only=True, default=dict)
     errors = serializers.JSONField(read_only=True, default=dict)
 
-    def validate(self, data):
-        emails, phones = data.get("emails"), data.get("phones")
-        if not emails and not phones:
-            raise serializers.ValidationError(
-                _("Either 'emails' or 'phones' is required for sending token.")
-            )
-
-        self.context["users"] = User.objects.filter(
-            **{f"{EMAIL_FIELD}__in": emails} if emails else {f"{PHONE_FIELD}__in": phones}
-        )
-
-        return data
-
     def create(self, validated_data):
         view = self.context["view"]
 
@@ -111,7 +99,15 @@ class BulkSendTokenSerializer(ChannelSerializer):
 
         channel = validated_data.get("channel")
 
-        # send tokens
+        # users lookup
+
+        users = self.context.get("users")
+        emails, phones = validated_data.get("emails"), validated_data.get("phones")
+        users = users or User.objects.filter(
+            Q(**{f"{EMAIL_FIELD}__in": emails}) | Q(**{f"{PHONE_FIELD}__in": phones})
+        )
+
+        # generate and send tokens
 
         url_tokens = tokenizer.bulk_generate_tokenized_link(
             self.context.get("users"),
