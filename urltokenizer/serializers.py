@@ -68,6 +68,10 @@ class SendTokenSerializer(ChannelSerializer):
             email_subject=self.context.get("email_subject"),
             fail_silently=self.context.get("fail_silently"),
         )
+
+        if url_token.precondition_failed:
+            raise AuthenticationFailed(_("precondition failed"))
+
         if url_token.exception:
             raise serializers.ValidationError(url_token.exception)
 

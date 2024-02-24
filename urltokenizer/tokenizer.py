@@ -300,6 +300,9 @@ class URLTokenizer:
     ) -> list[URLToken]:
         url_tokens, threads = [], []
 
+        if users is None:
+            return url_tokens
+
         # Define a helper function to execute generate_tokenized_link for each user
         def generate_link(user):
             url_token = self.generate_tokenized_link(
