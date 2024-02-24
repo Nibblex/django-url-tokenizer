@@ -72,7 +72,7 @@ class URLTokenizer:
         template_id = _from_config(token_config, "template_id", None)
         plain_content = _from_config(token_config, "plain_content", "")
         template_data = _from_config(token_config, "template_data", {})
-        self.template = Template(plain_content, template_id, template_data)
+        self.template = Template(template_id, plain_content, template_data)
 
         # email
         self.email_field = _from_config(token_config, "email_field", "email")
