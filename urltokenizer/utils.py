@@ -38,6 +38,13 @@ def rgetattr(obj, attr, *args):
     return reduce(f, [obj] + attr.split("."))
 
 
+def rhasattr(obj, attr):
+    def f(obj, attr):
+        return hasattr(obj, attr)
+
+    return reduce(f, [obj] + attr.split("."))
+
+
 def encode(s: Any) -> str:
     return urlsafe_base64_encode(force_bytes(s))
 
@@ -135,7 +142,11 @@ class Template:
         }
 
     def get_template_data(self, url_token: URLToken) -> dict[str, Any]:
-        data = {k: rgetattr(url_token.user, k) for k in self.params}
+        data = {
+            k: rgetattr(url_token.user, k)
+            for k in self.params
+            if rhasattr(url_token.user, k)
+        }
         data.update(self._parse_context(url_token, self.context))
         return data
 
