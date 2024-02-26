@@ -144,9 +144,11 @@ class BulkSendTokenSerializer(ChannelSerializer):
 class CheckTokenSerializer(serializers.Serializer):
     uidb64 = serializers.CharField(required=True)
     token = serializers.CharField(required=True)
+    user_data = serializers.JSONField(required=False, default=dict)
     callbacks_kwargs = serializers.JSONField(required=False, write_only=True)
     callbacks_returns = serializers.JSONField(read_only=True)
-    user_data = serializers.JSONField(required=False, default=dict)
+    user = serializers.PrimaryKeyRelatedField(read_only=True)
+    log = serializers.PrimaryKeyRelatedField(read_only=True)
 
     def create(self, validated_data):
         view = self.context["view"]
@@ -177,6 +179,8 @@ class CheckTokenSerializer(serializers.Serializer):
         validated_data["callbacks_returns"] = tokenizer.run_callbacks(
             user, callback_kwargs=callback_kwargs, fail_silently=fail_silently
         )
+        validated_data["user"] = user
+        validated_data["log"] = log
 
         return validated_data
 
