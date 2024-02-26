@@ -25,6 +25,7 @@ class ChannelSerializer(serializers.Serializer):
 class SendTokenSerializer(ChannelSerializer):
     email = serializers.EmailField(required=False)
     phone = serializers.CharField(required=False)
+    log = serializers.PrimaryKeyRelatedField(read_only=True)
 
     def validate(self, data):
         email, phone = data.get("email"), data.get("phone")
@@ -68,6 +69,8 @@ class SendTokenSerializer(ChannelSerializer):
             email_subject=self.context.get("email_subject"),
             fail_silently=self.context.get("fail_silently"),
         )
+
+        validated_data["log"] = url_token.log
 
         if url_token.precondition_failed:
             raise AuthenticationFailed(_("precondition failed"))
@@ -128,13 +131,11 @@ class BulkSendTokenSerializer(ChannelSerializer):
         for url_token in url_tokens:
             to = url_token.email if channel == Channel.EMAIL else url_token.phone
             if url_token.exception:
-                validated_data.setdefault("errors", {})[to] = url_token.log.pk
+                validated_data.setdefault("errors", {})[to] = url_token.log
             elif url_token.precondition_failed:
-                validated_data.setdefault("precondition_failed", {})[
-                    to
-                ] = url_token.log.pk
+                validated_data.setdefault("precondition_failed", {})[to] = url_token.log
             else:
-                validated_data.setdefault("sent", {})[to] = url_token.log.pk
+                validated_data.setdefault("sent", {})[to] = url_token.log
 
         return validated_data
 
