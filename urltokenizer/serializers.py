@@ -130,12 +130,13 @@ class BulkSendTokenSerializer(ChannelSerializer):
 
         for url_token in url_tokens:
             to = url_token.email if channel == Channel.EMAIL else url_token.phone
+            log = url_token.log.pk if url_token.log else None
             if url_token.exception:
-                validated_data.setdefault("errors", {})[to] = url_token.log
+                validated_data.setdefault("errors", {})[to] = log
             elif url_token.precondition_failed:
-                validated_data.setdefault("precondition_failed", {})[to] = url_token.log
+                validated_data.setdefault("precondition_failed", {})[to] = log
             else:
-                validated_data.setdefault("sent", {})[to] = url_token.log
+                validated_data.setdefault("sent", {})[to] = log
 
         return validated_data
 
