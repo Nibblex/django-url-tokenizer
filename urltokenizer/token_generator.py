@@ -201,6 +201,9 @@ class TokenGenerator:
         Run callbacks for a given user.
         """
 
+        def is_lambda(func):
+            return isinstance(func, type(lambda x: x)) and func.__name__ == "<lambda>"
+
         def pop_next_matching_kwargs(kwargs, params):
             """
             Pop the next matching kwargs from the list of kwargs.
@@ -214,10 +217,26 @@ class TokenGenerator:
 
         callbacks_returns = defaultdict(list)
         for callback in self.callbacks:
-            method_name = callback.get("method")
-            method = getattr(user, method_name, None)
+            method_name, path, lambda_f = (
+                callback.get("method"),
+                callback.get("path"),
+                callback.get("lambda"),
+            )
+            if not method_name and not path and not lambda_f:
+                if fail_silently:
+                    continue
 
-            if method is None:
+                raise URLTokenizerError(ErrorCode.callback_configuration_error)
+
+            # Get the callback method
+            if method_name:
+                method = getattr(user, method_name, None)
+            elif path:
+                method = import_string(path)
+            elif lambda_f:
+                method = lambda_f
+
+            if method is None or not callable(method):
                 if fail_silently:
                     continue
 
@@ -225,12 +244,14 @@ class TokenGenerator:
 
             # Get the kwargs for the callback method
             signature = inspect.signature(method)
+
             kwargs = pop_next_matching_kwargs(
                 callback_kwargs_copy, signature.parameters.keys()
             )
+            kwargs.update(callback.get("defaults", {}))  # default kwargs
 
-            # Add the default kwargs
-            kwargs.update(callback.get("defaults", {}))
+            if is_lambda(method):
+                kwargs.update({"user": user})
 
             # Execute the callback
             try:
