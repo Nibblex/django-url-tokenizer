@@ -23,7 +23,7 @@ from .utils import (
     Template,
     URLToken,
     _from_config,
-    _str_import,
+    _parse_preconditions,
     decode,
     encode,
 )
@@ -63,10 +63,7 @@ class URLTokenizer:
         # sending
         self.send_enabled = _from_config(token_config, "send_enabled", False)
         self.channel = _from_config(token_config, "channel", None)
-        self.send_preconditions = _str_import(
-            SETTINGS.get("SEND_PRECONDITIONS", [])
-            + token_config.get("send_preconditions", [])
-        )
+        self.send_preconditions = _parse_preconditions(token_config, "send_preconditions")
 
         # template
         template_id = _from_config(token_config, "template_id", None)
@@ -147,7 +144,7 @@ class URLTokenizer:
     def _validate_preconditions(
         self, url_token: URLToken, fail_silently: bool = False
     ) -> bool:
-        for pred in self.send_preconditions:
+        for k, pred in self.send_preconditions:
             try:
                 if pred(url_token.user):
                     continue
@@ -155,10 +152,11 @@ class URLTokenizer:
                 url_token.exception = URLTokenizerError(
                     ErrorCode.send_precondition_execution_error,
                     context={"exception": e},
-                    pred=pred,
+                    pred=k,
                 )
 
-            url_token.precondition_failed = url_token.exception is None
+            url_token.precondition_failed = k
+
             if self.logging_enabled:
                 url_token._log()
 

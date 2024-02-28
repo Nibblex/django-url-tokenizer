@@ -18,8 +18,10 @@ class Log(models.Model):
     channel = models.CharField(
         max_length=255, choices=Channel.choices, null=True, editable=False
     )
-    send_precondition_failed = models.BooleanField(default=False, editable=False)
-    check_precondition_failed = models.BooleanField(default=False, editable=False)
+    send_precondition_failed = models.CharField(max_length=255, null=True, editable=False)
+    check_precondition_failed = models.CharField(
+        max_length=255, null=True, editable=False
+    )
     sent = models.BooleanField(default=False, editable=False)
     errors = models.CharField(max_length=255, null=True, editable=False)
     user = models.ForeignKey(

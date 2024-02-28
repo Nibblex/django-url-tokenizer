@@ -25,10 +25,18 @@ def _from_config(config: dict[str, Any], key: str, default: Any) -> Any:
     return config.get(key, SETTINGS.get(key.upper(), default))
 
 
-def _str_import(
-    functions: list[str | Callable[[object], bool]]
-) -> list[Callable[[object], bool]]:
-    return [import_string(f) if isinstance(f, str) else f for f in functions]
+def _parse_preconditions(
+    config: dict[str, Any], key: str
+) -> dict[str, Callable[[object], bool]]:
+    preconditions = SETTINGS.get(key.upper(), {}).update(
+        SETTINGS.get("PRECONDITIONS", {})
+    )
+    preconditions.update(config.get(key, {}).update(config.get("preconditions", {})))
+
+    return {
+        key: import_string(pred) if isinstance(pred, str) else pred
+        for key, pred in preconditions.items()
+    }
 
 
 def rgetattr(obj, attr, *args):
@@ -67,7 +75,7 @@ class URLToken:
     name: str = ""
     phone: str = ""
     channel: Channel | None = None
-    precondition_failed: bool = False
+    precondition_failed: str | None = None
     sent: bool = False
     exception: URLTokenizerError | None = None
     log: Log | None = None

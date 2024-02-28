@@ -14,7 +14,7 @@ from django.utils.module_loading import import_string
 
 from .exceptions import ErrorCode, URLTokenizerError
 from .models import Log
-from .utils import SETTINGS, _from_config, _str_import, encode
+from .utils import _from_config, _parse_preconditions, encode
 
 
 class TokenGenerator:
@@ -41,11 +41,6 @@ class TokenGenerator:
     def __init__(self, token_config: dict[str, Any] | None = None):
         token_config = token_config or {}
 
-        check_preconditions = _str_import(
-            SETTINGS.get("CHECK_PRECONDITIONS", [])
-            + token_config.get("check_preconditions", [])
-        )
-
         # token
         self.algorithm = self.algorithm or "sha256"
         self.encoding_field = _from_config(token_config, "encoding_field", "pk")
@@ -53,7 +48,9 @@ class TokenGenerator:
         self.timeout = _from_config(token_config, "timeout", 60)
 
         # check
-        self.check_preconditions = check_preconditions
+        self.check_preconditions = _parse_preconditions(
+            token_config, "check_preconditions"
+        )
         self.check_logs = _from_config(token_config, "check_logs", False)
         self.user_serializer = _from_config(token_config, "user_serializer", None)
         self.callbacks = _from_config(token_config, "callbacks", [])
@@ -100,11 +97,11 @@ class TokenGenerator:
     def _validate_preconditions(
         self, user: object, token: str, fail_silently: bool = False
     ) -> bool:
-        for pred in self.check_preconditions:
+        for k, pred in self.check_preconditions:
             try:
                 if not pred(user):
                     log = self._get_log(user, token)
-                    log.check_precondition_failed = True
+                    log.check_precondition_failed = k
                     log.save(update_fields=["check_precondition_failed"])
                     return False
             except Exception as e:
