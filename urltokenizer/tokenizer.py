@@ -144,7 +144,7 @@ class URLTokenizer:
     def _validate_preconditions(
         self, url_token: URLToken, fail_silently: bool = False
     ) -> bool:
-        for k, pred in self.send_preconditions:
+        for k, pred in self.send_preconditions.items():
             try:
                 if pred(url_token.user):
                     continue

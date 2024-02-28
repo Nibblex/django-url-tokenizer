@@ -97,7 +97,7 @@ class TokenGenerator:
     def _validate_preconditions(
         self, user: object, token: str, fail_silently: bool = False
     ) -> bool:
-        for k, pred in self.check_preconditions:
+        for k, pred in self.check_preconditions.items():
             try:
                 if not pred(user):
                     log = self._get_log(user, token)
