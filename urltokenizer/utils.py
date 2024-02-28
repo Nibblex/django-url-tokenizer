@@ -28,10 +28,10 @@ def _from_config(config: dict[str, Any], key: str, default: Any) -> Any:
 def _parse_preconditions(
     config: dict[str, Any], key: str
 ) -> dict[str, Callable[[object], bool]]:
-    preconditions = SETTINGS.get(key.upper(), {}).update(
-        SETTINGS.get("PRECONDITIONS", {})
-    )
-    preconditions.update(config.get(key, {}).update(config.get("preconditions", {})))
+    preconditions = SETTINGS.get(key.upper(), {})
+    preconditions.update(SETTINGS.get("PRECONDITIONS", {}))
+    preconditions.update(config.get(key, {}))
+    preconditions.update(config.get("preconditions", {}))
 
     return {
         key: import_string(pred) if isinstance(pred, str) else pred
