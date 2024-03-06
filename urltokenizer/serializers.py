@@ -7,6 +7,7 @@ from django.shortcuts import get_object_or_404
 from django.utils.translation import gettext_lazy as _
 
 from .enums import Channel
+from .exceptions import URLTokenizerError
 from .models import Log
 from .tokenizer import URLTokenizer
 from .utils import SETTINGS, _from_config
@@ -176,9 +177,14 @@ class CheckTokenSerializer(serializers.Serializer):
         # run callbacks
 
         callback_kwargs = validated_data.get("callbacks_kwargs", {})
-        validated_data["callbacks_returns"] = tokenizer.run_callbacks(
-            user, callback_kwargs=callback_kwargs, fail_silently=fail_silently
-        )
+
+        try:
+            validated_data["callbacks_returns"] = tokenizer.run_callbacks(
+                user, callback_kwargs=callback_kwargs, fail_silently=fail_silently
+            )
+        except URLTokenizerError as e:
+            raise serializers.ValidationError(e)
+
         validated_data["user"] = user
         validated_data["log"] = log
 
