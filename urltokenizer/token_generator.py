@@ -56,8 +56,8 @@ class TokenGenerator:
         self.callbacks = _from_config(token_config, "callbacks", [])
 
     @staticmethod
-    def __num_seconds(dt) -> int:
-        return int((dt - datetime(2001, 1, 1)).total_seconds())
+    def __num_ms(dt) -> int:
+        return int((dt - datetime(2001, 1, 1)).total_seconds() * 1000)
 
     def _make_hash_value(self, user: object, timestamp: int) -> str:
         """
@@ -139,7 +139,7 @@ class TokenGenerator:
         Return a token that can be used once for the given user.
         """
         now = self.__now
-        return self._make_token_with_timestamp(user, self.__num_seconds(now)), now
+        return self._make_token_with_timestamp(user, self.__num_ms(now)), now
 
     def check_token(
         self,
@@ -166,7 +166,7 @@ class TokenGenerator:
             return False, None
 
         # Check the timestamp is within limit.
-        if self.timeout and (self.__num_seconds(self.__now) - ts) > self.timeout:
+        if self.timeout and (self.__num_ms(self.__now) - ts) / 1000 > self.timeout:
             return False, None
 
         # Check the preconditions
