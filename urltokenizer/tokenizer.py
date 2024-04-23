@@ -3,7 +3,7 @@ import threading
 from collections.abc import Iterable
 from datetime import timedelta
 from enum import Enum
-from typing import Any
+from typing import Any, Callable
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -171,10 +171,13 @@ class URLTokenizer:
     def _send_link(
         self,
         url_token: URLToken,
-        template: Template | None = None,
+        template: Template | Callable[[URLToken], Template] | None = None,
         email_subject: str | None = None,
         fail_silently: bool = False,
     ) -> URLToken:
+        if callable(template):
+            template = template(url_token)
+
         message = template.render(url_token) if template else None
 
         if url_token.channel == Channel.EMAIL:
@@ -232,7 +235,7 @@ class URLTokenizer:
         protocol: str | None = None,
         port: str | None = None,
         channel: Channel | None = None,
-        template: Template | None = None,
+        template: Template | Callable[[URLToken], Template] | None = None,
         email_subject: str | None = None,
         fail_silently: bool | None = None,
     ) -> URLToken:
@@ -292,7 +295,7 @@ class URLTokenizer:
         protocol: str | None = None,
         port: str | None = None,
         channel: Channel | None = None,
-        template: Template | None = None,
+        template: Template | Callable[[URLToken], Template] | None = None,
         email_subject: str | None = None,
         fail_silently: bool | None = None,
     ) -> list[URLToken]:

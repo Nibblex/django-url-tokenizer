@@ -1,6 +1,6 @@
 from collections.abc import Iterable
 from enum import Enum
-from typing import Any
+from typing import Any, Callable
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ImproperlyConfigured
@@ -33,7 +33,7 @@ class URLTokenizerMixin:
         protocol: str | None = None,
         port: str | None = None,
         channel: Channel | None = None,
-        template: Template | None = None,
+        template: Template | Callable[[URLToken], Template] | None = None,
         email_subject: str | None = None,
         fail_silently: bool | None = None,
     ) -> URLToken:

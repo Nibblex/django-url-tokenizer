@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Callable
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ImproperlyConfigured
@@ -28,7 +29,7 @@ class URLTokenizerQueryset(models.QuerySet):
         protocol: str | None = None,
         port: str | None = None,
         channel: Channel | None = None,
-        template: Template | None = None,
+        template: Template | Callable[[URLToken], Template] | None = None,
         email_subject: str | None = None,
         fail_silently: bool | None = None,
     ) -> list[URLToken]:
