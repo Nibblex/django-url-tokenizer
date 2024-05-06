@@ -175,7 +175,7 @@ class URLTokenizer:
         email_subject: str | None = None,
         fail_silently: bool = False,
     ) -> URLToken:
-        if callable(template):
+        if callable(template) and not isinstance(template, Template):
             template = template(url_token)
 
         message = template.render(url_token) if template else None
