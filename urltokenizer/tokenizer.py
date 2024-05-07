@@ -230,7 +230,7 @@ class URLTokenizer:
     def generate_tokenized_link(
         self,
         user: object,
-        path: str | None = None,
+        path: str | Callable[[object], str] | None = None,
         domain: str | None = None,
         protocol: str | None = None,
         port: str | None = None,
@@ -240,6 +240,8 @@ class URLTokenizer:
         fail_silently: bool | None = None,
     ) -> URLToken:
         path = path or self.path
+        if callable(path):
+            path = path(user)
         domain = domain or self.domain
         protocol = protocol or self.protocol
         port = port or self.port
@@ -261,7 +263,7 @@ class URLTokenizer:
 
         uidb64 = encode(getattr(user, self.encoding_field))
         token, ts = self._token_generator.make_token(user)
-        link = f"{protocol}://{domain}:{port}/{self.path}?uid={uidb64}&key={token}"
+        link = f"{protocol}://{domain}:{port}/{path}?uid={uidb64}&key={token}"
         hash = hashlib.sha256(force_bytes(uidb64 + token)).hexdigest()
         expires_at = timezone.make_aware(ts) + timedelta(
             seconds=self._token_generator.timeout
@@ -290,7 +292,7 @@ class URLTokenizer:
     def bulk_generate_tokenized_link(
         self,
         users: Iterable[object],
-        path: str | None = None,
+        path: str | Callable[[object], str] | None = None,
         domain: str | None = None,
         protocol: str | None = None,
         port: str | None = None,

@@ -24,7 +24,7 @@ class URLTokenizerQueryset(models.QuerySet):
     def bulk_generate_tokenized_link(
         self,
         token_type: str | Enum | None = None,
-        path: str | None = None,
+        path: str | Callable[[object], str] | None = None,
         domain: str | None = None,
         protocol: str | None = None,
         port: str | None = None,
