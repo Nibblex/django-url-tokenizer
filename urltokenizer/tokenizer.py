@@ -240,7 +240,7 @@ class URLTokenizer:
         email_subject: str | None = None,
         fail_silently: bool | None = None,
     ) -> URLToken:
-        path = parse_path(path or self.path)
+        path = parse_path(path or self.path, user)
         domain = domain or self.domain
         protocol = protocol or self.protocol
         port = port or self.port

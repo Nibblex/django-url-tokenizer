@@ -39,11 +39,11 @@ def _parse_preconditions(
     }
 
 
-def parse_path(path: str | Callable[[object], str], user: object) -> str:
+def parse_path(path: str | Callable[[object], str] | None, user: object) -> str:
     if callable(path):
         path = path(user)
 
-    return path.strip("/")
+    return (path or "").strip("/")
 
 
 def rgetattr(obj, attr, *args):
