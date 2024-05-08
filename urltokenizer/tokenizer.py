@@ -26,6 +26,7 @@ from .utils import (
     _parse_preconditions,
     decode,
     encode,
+    parse_path,
 )
 
 try:
@@ -55,7 +56,7 @@ class URLTokenizer:
         self._token_generator = TokenGenerator(token_config)
 
         # url
-        self.path = _from_config(token_config, "path", "").strip("/")
+        self.path = _from_config(token_config, "path", "")
         self.domain = _from_config(token_config, "domain", "localhost")
         self.protocol = _from_config(token_config, "protocol", "http")
         self.port = _from_config(token_config, "port", "80")
@@ -239,9 +240,7 @@ class URLTokenizer:
         email_subject: str | None = None,
         fail_silently: bool | None = None,
     ) -> URLToken:
-        path = path or self.path
-        if callable(path):
-            path = path(user)
+        path = parse_path(path or self.path)
         domain = domain or self.domain
         protocol = protocol or self.protocol
         port = port or self.port

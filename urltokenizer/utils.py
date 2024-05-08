@@ -39,6 +39,13 @@ def _parse_preconditions(
     }
 
 
+def parse_path(path: str | Callable[[object], str], user: object) -> str:
+    if callable(path):
+        path = path(user)
+
+    return path.strip("/")
+
+
 def rgetattr(obj, attr, *args):
     def f(obj, attr):
         return getattr(obj, attr, *args)
