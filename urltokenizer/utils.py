@@ -2,7 +2,7 @@ from collections.abc import Callable
 from contextlib import suppress
 from dataclasses import dataclass
 from datetime import datetime
-from functools import reduce
+from relattrs import rgetattr, rhasattr
 from typing import Any
 
 from jinja2 import Template as JinjaTemplate
@@ -44,20 +44,6 @@ def parse_path(path: str | Callable[[object], str] | None, user: object) -> str:
         path = path(user)
 
     return (path or "").strip("/")
-
-
-def rgetattr(obj, attr, *args):
-    def f(obj, attr):
-        return getattr(obj, attr, *args)
-
-    return reduce(f, [obj] + attr.split("."))
-
-
-def rhasattr(obj, attr):
-    def f(obj, attr):
-        return hasattr(obj, attr)
-
-    return reduce(f, [obj] + attr.split("."))
 
 
 def encode(s: Any) -> str:
