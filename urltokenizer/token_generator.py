@@ -27,7 +27,7 @@ class TokenGenerator:
     _secret = None
 
     @property
-    def __now(self) -> datetime:
+    def _now(self) -> datetime:
         return datetime.now()
 
     @property
@@ -85,10 +85,10 @@ class TokenGenerator:
 
     def _get_log(self, user: object, token: str) -> Log | None:
         uidb64 = encode(getattr(user, self.encoding_field))
-        hash = hashlib.sha256(force_bytes(uidb64 + token)).hexdigest()
+        token_hash = hashlib.sha256(force_bytes(uidb64 + token)).hexdigest()
 
         try:
-            log = Log.objects.filter(hash=hash).last()
+            log = Log.objects.filter(hash=token_hash).last()
         except ProgrammingError:
             return None
 
@@ -101,8 +101,9 @@ class TokenGenerator:
             try:
                 if not pred(user):
                     log = self._get_log(user, token)
-                    log.check_precondition_failed = k
-                    log.save(update_fields=["check_precondition_failed"])
+                    if log is not None:
+                        log.check_precondition_failed = k
+                        log.save(update_fields=["check_precondition_failed"])
                     return False
             except Exception as e:
                 if fail_silently:
@@ -138,7 +139,7 @@ class TokenGenerator:
         """
         Return a token that can be used once for the given user.
         """
-        now = self.__now
+        now = self._now
         return self._make_token_with_timestamp(user, self.__num_ms(now)), now
 
     def check_token(
@@ -166,7 +167,7 @@ class TokenGenerator:
             return False, None
 
         # Check the timestamp is within limit.
-        if self.timeout and (self.__num_ms(self.__now) - ts) / 1000 > self.timeout:
+        if self.timeout and (self.__num_ms(self._now) - ts) / 1000 > self.timeout:
             return False, None
 
         # Check the preconditions

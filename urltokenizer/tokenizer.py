@@ -186,7 +186,7 @@ class URLTokenizer:
                 return url_token._(exception=URLTokenizerError(ErrorCode.no_email))
 
             # sendgrid
-            if template.id and self._sendgrid_api._client:
+            if template and template.id and self._sendgrid_api._client:
                 personalizations = [
                     {
                         "to": [{"email": url_token.email, "name": url_token.name}],
@@ -263,13 +263,13 @@ class URLTokenizer:
         uidb64 = encode(getattr(user, self.encoding_field))
         token, ts = self._token_generator.make_token(user)
         link = f"{protocol}://{domain}:{port}/{path}?uid={uidb64}&key={token}"
-        hash = hashlib.sha256(force_bytes(uidb64 + token)).hexdigest()
+        token_hash = hashlib.sha256(force_bytes(uidb64 + token)).hexdigest()
         expires_at = timezone.make_aware(ts) + timedelta(
             seconds=self._token_generator.timeout
         )
 
         url_token = url_token._(
-            uidb64=uidb64, token=token, link=link, hash=hash, expires_at=expires_at
+            uidb64=uidb64, token=token, link=link, hash=token_hash, expires_at=expires_at
         )
 
         if self.send_enabled:
@@ -304,6 +304,9 @@ class URLTokenizer:
 
         if users is None:
             return url_tokens
+
+        if fail_silently is None:
+            fail_silently = self.fail_silently_on_bulk_generate
 
         # Define a helper function to execute generate_tokenized_link for each user
         def generate_link(user):

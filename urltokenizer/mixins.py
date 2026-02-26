@@ -24,6 +24,7 @@ class URLTokenizerMixin:
             raise ImproperlyConfigured(
                 _("URLTokenizerMixin must be used with the auth user model")
             )
+        super().__init__(*args, **kwargs)
 
     def generate_tokenized_link(
         self,
