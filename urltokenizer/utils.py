@@ -1,6 +1,7 @@
+import string
 from collections.abc import Callable
 from contextlib import suppress
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from relattrs import rgetattr, rhasattr
 from typing import Any
@@ -58,7 +59,7 @@ def decode(s: bytes | str) -> str:
 class URLToken:
     user: object
     type: str
-    created_at: datetime = timezone.now()
+    created_at: datetime = field(default_factory=timezone.now)
     expires_at: datetime | None = None
     uidb64: str = ""
     token: str = ""
@@ -112,8 +113,6 @@ class Template:
     @property
     def _params_from_plain_content(self) -> list[str]:
         def is_underscore(s: str) -> bool:
-            import string
-
             return not s[0].isdigit() and all(
                 c in string.ascii_lowercase + "_" + string.digits for c in s
             )
