@@ -215,12 +215,13 @@ class TokenGenerator:
 
         callbacks_returns = defaultdict(list)
         for callback in self.callbacks:
-            method_name, path, lambda_f = (
+            method_name, path, lambda_f, builtin_name = (
                 callback.get("method"),
                 callback.get("path"),
                 callback.get("lambda"),
+                callback.get("builtin"),
             )
-            if not method_name and not path and not lambda_f:
+            if not method_name and not path and not lambda_f and not builtin_name:
                 if fail_silently:
                     continue
 
@@ -233,12 +234,25 @@ class TokenGenerator:
                 method = import_string(path)
             elif lambda_f:
                 method = lambda_f
+            elif builtin_name:
+                from .builtin_callbacks import BUILTIN_CALLBACKS
+
+                method = BUILTIN_CALLBACKS.get(builtin_name)
+                if method is None:
+                    if fail_silently:
+                        continue
+
+                    raise URLTokenizerError(
+                        ErrorCode.invalid_builtin_callback, builtin=builtin_name
+                    )
 
             if method is None or not callable(method):
                 if fail_silently:
                     continue
 
-                raise URLTokenizerError(ErrorCode.invalid_method, method_name=method_name)
+                raise URLTokenizerError(
+                    ErrorCode.invalid_method, method_name=method_name or builtin_name
+                )
 
             # Get the kwargs for the callback method
             signature = inspect.signature(method)
@@ -248,8 +262,15 @@ class TokenGenerator:
             )
             kwargs.update(callback.get("defaults", {}))  # default kwargs
 
-            if is_lambda(method):
+            if is_lambda(method) or builtin_name:
                 kwargs.update({"user": user})
+
+            if (
+                builtin_name
+                and "user_serializer_path" in signature.parameters
+                and self.user_serializer
+            ):
+                kwargs.setdefault("user_serializer_path", self.user_serializer)
 
             # Execute the callback
             try:
@@ -259,13 +280,13 @@ class TokenGenerator:
                     raise URLTokenizerError(
                         ErrorCode.callback_execution_error,
                         context={"exception": e},
-                        callback=method_name,
+                        callback=method_name or builtin_name,
                     ) from e
 
                 continue
 
-            if callback.get("return_value", False):
-                callbacks_returns[method_name].append(callback_return)
+            if callback.get("return_value", builtin_name is not None):
+                callbacks_returns[method_name or builtin_name].append(callback_return)
 
         return callbacks_returns
 
