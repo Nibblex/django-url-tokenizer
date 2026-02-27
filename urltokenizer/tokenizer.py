@@ -54,6 +54,15 @@ class URLTokenizer:
         # token
         token_config = self._get_token_config(SETTINGS, self.token_type)
         self._token_generator = TokenGenerator(token_config)
+        # extra token types
+        extra_token_types = _from_config(token_config, "extra_token_types", [])
+        extra_token_types = [self._parse_token_type(t) for t in self.extra_token_types]
+        extra_token_configs = {
+            t: self._get_token_config(SETTINGS, t) for t in extra_token_types
+        }
+        self._extra_token_generators = {
+            t: TokenGenerator(extra_token_configs[t]) for t in extra_token_types
+        }
 
         # url
         self.path = _from_config(token_config, "path", "")
@@ -268,8 +277,19 @@ class URLTokenizer:
             seconds=self._token_generator.timeout
         )
 
+        for i, (extra_token_type, extra_token_generator) in enumerate(
+            self._extra_token_generators.items(), start=2
+        ):
+            extra_token, _ = extra_token_generator.make_token(user)
+            url_token.extra_tokens[extra_token_type] = extra_token
+            link += f"&key{i}={extra_token}"
+
         url_token = url_token._(
-            uidb64=uidb64, token=token, link=link, hash=token_hash, expires_at=expires_at
+            uidb64=uidb64,
+            token=token,
+            link=link,
+            hash=token_hash,
+            expires_at=expires_at,
         )
 
         if self.send_enabled:

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "django-url-tokenizer"
-version = "0.1.58"
+version = "0.1.59"
 description = "A python package that provides a Django app that allows you to generate tokenized urls and send them to users via email."
 readme = { file = "README.rst", content-type = "text/x-rst" }
 license = "MIT"
