@@ -271,13 +271,13 @@ class URLTokenizer:
 
         extra_tokens = {}
         if extra_token_types:
-            for extra_type in extra_token_types:
+            for i, extra_type in enumerate(extra_token_types, start=2):
                 extra_type_str = self._parse_token_type(extra_type)
                 extra_token_config = self._get_token_config(SETTINGS, extra_type_str)
                 extra_generator = TokenGenerator(extra_token_config)
                 extra_token_value, _ = extra_generator.make_token(user)
                 extra_tokens[extra_type_str] = extra_token_value
-                link += f"&{extra_type_str}={extra_token_value}"
+                link += f"&key{i}={extra_token_value}"
 
         url_token = url_token._(
             uidb64=uidb64,
