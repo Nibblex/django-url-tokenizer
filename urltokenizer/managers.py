@@ -31,7 +31,6 @@ class URLTokenizerQueryset(models.QuerySet):
         channel: Channel | None = None,
         template: Template | Callable[[URLToken], Template] | None = None,
         email_subject: str | None = None,
-        extra_token_types: list | None = None,
         fail_silently: bool | None = None,
     ) -> list[URLToken]:
         from .tokenizer import URLTokenizer
@@ -47,7 +46,6 @@ class URLTokenizerQueryset(models.QuerySet):
             channel=channel,
             template=template,
             email_subject=email_subject,
-            extra_token_types=extra_token_types,
             fail_silently=fail_silently,
         )
 

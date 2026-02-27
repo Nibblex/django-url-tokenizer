@@ -54,6 +54,15 @@ class URLTokenizer:
         # token
         token_config = self._get_token_config(SETTINGS, self.token_type)
         self._token_generator = TokenGenerator(token_config)
+        # extra token types
+        extra_token_types = _from_config(token_config, "extra_token_types", [])
+        extra_token_types = [self._parse_token_type(t) for t in self.extra_token_types]
+        extra_token_configs = {
+            t: self._get_token_config(SETTINGS, t) for t in extra_token_types
+        }
+        self._extra_token_generators = {
+            t: TokenGenerator(extra_token_configs[t]) for t in extra_token_types
+        }
 
         # url
         self.path = _from_config(token_config, "path", "")
@@ -238,7 +247,6 @@ class URLTokenizer:
         channel: Channel | None = None,
         template: Template | Callable[[URLToken], Template] | None = None,
         email_subject: str | None = None,
-        extra_token_types: list | None = None,
         fail_silently: bool | None = None,
     ) -> URLToken:
         path = parse_path(path or self.path, user)
@@ -269,15 +277,12 @@ class URLTokenizer:
             seconds=self._token_generator.timeout
         )
 
-        extra_tokens = {}
-        if extra_token_types:
-            for i, extra_type in enumerate(extra_token_types, start=2):
-                extra_type_str = self._parse_token_type(extra_type)
-                extra_token_config = self._get_token_config(SETTINGS, extra_type_str)
-                extra_generator = TokenGenerator(extra_token_config)
-                extra_token_value, _ = extra_generator.make_token(user)
-                extra_tokens[extra_type_str] = extra_token_value
-                link += f"&key{i}={extra_token_value}"
+        for i, (extra_token_type, extra_token_generator) in enumerate(
+            self._extra_token_generators.items(), start=2
+        ):
+            extra_token, _ = extra_token_generator.make_token(user)
+            url_token.extra_tokens[extra_token_type] = extra_token
+            link += f"&key{i}={extra_token}"
 
         url_token = url_token._(
             uidb64=uidb64,
@@ -285,7 +290,6 @@ class URLTokenizer:
             link=link,
             hash=token_hash,
             expires_at=expires_at,
-            extra_tokens=extra_tokens,
         )
 
         if self.send_enabled:
@@ -314,7 +318,6 @@ class URLTokenizer:
         channel: Channel | None = None,
         template: Template | Callable[[URLToken], Template] | None = None,
         email_subject: str | None = None,
-        extra_token_types: list | None = None,
         fail_silently: bool | None = None,
     ) -> list[URLToken]:
         url_tokens, threads = [], []
@@ -336,7 +339,6 @@ class URLTokenizer:
                 channel=channel,
                 template=template,
                 email_subject=email_subject,
-                extra_token_types=extra_token_types,
                 fail_silently=fail_silently,
             )
             url_tokens.append(url_token)
