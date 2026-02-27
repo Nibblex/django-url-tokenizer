@@ -18,9 +18,10 @@ class ErrorCode(Enum):
     )
     user_serializer_error = _("'is_valid' method from {serializer} returned False")
     callback_configuration_error = _(
-        "Callback must include one of following keys: 'method', 'path' or 'lambda'"
+        "Callback must include one of following keys: 'method', 'path', 'lambda' or 'builtin'"
     )
     callback_execution_error = _("Error during callback '{callback}' execution")
+    invalid_builtin_callback = _("Built-in callback '{builtin}' does not exist")
 
 
 class URLTokenizerError(Exception):
