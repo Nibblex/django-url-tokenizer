@@ -238,6 +238,7 @@ class URLTokenizer:
         channel: Channel | None = None,
         template: Template | Callable[[URLToken], Template] | None = None,
         email_subject: str | None = None,
+        extra_token_types: list | None = None,
         fail_silently: bool | None = None,
     ) -> URLToken:
         path = parse_path(path or self.path, user)
@@ -268,8 +269,23 @@ class URLTokenizer:
             seconds=self._token_generator.timeout
         )
 
+        extra_tokens = {}
+        if extra_token_types:
+            for extra_type in extra_token_types:
+                extra_type_str = self._parse_token_type(extra_type)
+                extra_token_config = self._get_token_config(SETTINGS, extra_type_str)
+                extra_generator = TokenGenerator(extra_token_config)
+                extra_token_value, _ = extra_generator.make_token(user)
+                extra_tokens[extra_type_str] = extra_token_value
+                link += f"&{extra_type_str}={extra_token_value}"
+
         url_token = url_token._(
-            uidb64=uidb64, token=token, link=link, hash=token_hash, expires_at=expires_at
+            uidb64=uidb64,
+            token=token,
+            link=link,
+            hash=token_hash,
+            expires_at=expires_at,
+            extra_tokens=extra_tokens,
         )
 
         if self.send_enabled:
@@ -298,6 +314,7 @@ class URLTokenizer:
         channel: Channel | None = None,
         template: Template | Callable[[URLToken], Template] | None = None,
         email_subject: str | None = None,
+        extra_token_types: list | None = None,
         fail_silently: bool | None = None,
     ) -> list[URLToken]:
         url_tokens, threads = [], []
@@ -319,6 +336,7 @@ class URLTokenizer:
                 channel=channel,
                 template=template,
                 email_subject=email_subject,
+                extra_token_types=extra_token_types,
                 fail_silently=fail_silently,
             )
             url_tokens.append(url_token)

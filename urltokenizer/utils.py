@@ -73,6 +73,7 @@ class URLToken:
     sent: bool = False
     exception: URLTokenizerError | None = None
     log: Log | None = None
+    extra_tokens: dict = field(default_factory=dict)
 
     def _(self, **kwargs):
         for key, value in kwargs.items():
