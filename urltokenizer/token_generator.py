@@ -12,6 +12,7 @@ from django.utils.encoding import force_bytes
 from django.utils.http import base36_to_int, int_to_base36
 from django.utils.module_loading import import_string
 
+from .callbacks import BUILTIN_CALLBACKS
 from .exceptions import ErrorCode, URLTokenizerError
 from .models import Log
 from .utils import _from_config, _parse_preconditions, encode
@@ -211,10 +212,22 @@ class TokenGenerator:
             if callback.get("lambda"):
                 return callback["lambda"]
 
+            if callback.get("builtin"):
+                builtin_name = callback["builtin"]
+                builtin_func = BUILTIN_CALLBACKS.get(builtin_name)
+                if builtin_func is None:
+                    raise URLTokenizerError(
+                        ErrorCode.invalid_builtin_callback, builtin=builtin_name
+                    )
+                return builtin_func
+
             raise URLTokenizerError(ErrorCode.callback_configuration_error)
 
         def extract_kwargs(
-            method, available_kwargs: list[dict[str, Any]], defaults: dict
+            method,
+            available_kwargs: list[dict[str, Any]],
+            defaults: dict,
+            is_builtin: bool = False,
         ):
             signature = inspect.signature(method)
             param_names = set(signature.parameters.keys())
@@ -228,7 +241,7 @@ class TokenGenerator:
 
             final_kwargs = {**selected, **defaults}
 
-            if "<lambda>" == getattr(method, "__name__", ""):
+            if is_builtin or "<lambda>" == getattr(method, "__name__", ""):
                 final_kwargs["user"] = user
 
             return final_kwargs
@@ -237,6 +250,7 @@ class TokenGenerator:
         results = defaultdict(list)
 
         for callback in self.callbacks:
+            method = None
             try:
                 method = resolve_callback(callback)
 
@@ -246,10 +260,22 @@ class TokenGenerator:
                         method_name=method.__name__ if method else None,
                     )
 
+                is_builtin = callback.get("builtin") is not None
+                defaults = callback.get("defaults", {})
+                if is_builtin:
+                    param_names = set(inspect.signature(method).parameters.keys())
+                    builtin_ctx = {
+                        k: v
+                        for k, v in {"user_serializer": self.user_serializer}.items()
+                        if k in param_names and v is not None
+                    }
+                    defaults = {**builtin_ctx, **defaults}
+
                 kwargs = extract_kwargs(
                     method,
                     available_kwargs,
-                    callback.get("defaults", {}),
+                    defaults,
+                    is_builtin=is_builtin,
                 )
 
                 result = method(**kwargs)
