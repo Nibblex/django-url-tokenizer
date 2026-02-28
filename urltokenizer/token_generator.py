@@ -196,78 +196,76 @@ class TokenGenerator:
         fail_silently: bool = False,
     ) -> dict[str, list[Any]]:
         """
-        Run callbacks for a given user.
+        Run the configured callbacks for the given user. Callbacks can be
+        configured to receive kwargs, and to return values that will be collected
+        and returned by this method.
         """
 
-        def is_lambda(func):
-            return isinstance(func, type(lambda x: x)) and func.__name__ == "<lambda>"
+        def resolve_callback(callback: dict[str, Any]):
+            if callback.get("method"):
+                return getattr(user, callback["method"], None)
 
-        def pop_next_matching_kwargs(kwargs, params):
-            """
-            Pop the next matching kwargs from the list of kwargs.
-            """
-            for i, kwarg in enumerate(kwargs):
-                if set(kwarg.keys()).issubset(params):
-                    return kwargs.pop(i)
-            return {}
+            if callback.get("path"):
+                return import_string(callback["path"])
 
-        callback_kwargs_copy = list(callback_kwargs or []).copy()
+            if callback.get("lambda"):
+                return callback["lambda"]
 
-        callbacks_returns = defaultdict(list)
-        for callback in self.callbacks:
-            method_name, path, lambda_f = (
-                callback.get("method"),
-                callback.get("path"),
-                callback.get("lambda"),
-            )
-            if not method_name and not path and not lambda_f:
-                if fail_silently:
-                    continue
+            raise URLTokenizerError(ErrorCode.callback_configuration_error)
 
-                raise URLTokenizerError(ErrorCode.callback_configuration_error)
-
-            # Get the callback method
-            if method_name:
-                method = getattr(user, method_name, None)
-            elif path:
-                method = import_string(path)
-            elif lambda_f:
-                method = lambda_f
-
-            if method is None or not callable(method):
-                if fail_silently:
-                    continue
-
-                raise URLTokenizerError(ErrorCode.invalid_method, method_name=method_name)
-
-            # Get the kwargs for the callback method
+        def extract_kwargs(
+            method, available_kwargs: list[dict[str, Any]], defaults: dict
+        ):
             signature = inspect.signature(method)
+            param_names = set(signature.parameters.keys())
 
-            kwargs = pop_next_matching_kwargs(
-                callback_kwargs_copy, signature.parameters.keys()
-            )
-            kwargs.update(callback.get("defaults", {}))  # default kwargs
+            for i, kw in enumerate(available_kwargs):
+                if set(kw.keys()).issubset(param_names):
+                    selected = available_kwargs.pop(i)
+                    break
+            else:
+                selected = {}
 
-            if is_lambda(method):
-                kwargs.update({"user": user})
+            final_kwargs = {**selected, **defaults}
 
-            # Execute the callback
+            if "<lambda>" == getattr(method, "__name__", ""):
+                final_kwargs["user"] = user
+
+            return final_kwargs
+
+        available_kwargs = list(callback_kwargs or [])
+        results = defaultdict(list)
+
+        for callback in self.callbacks:
             try:
-                callback_return = method(**kwargs)
+                method = resolve_callback(callback)
+
+                if not callable(method):
+                    raise URLTokenizerError(
+                        ErrorCode.invalid_method,
+                        method_name=method.__name__ if method else None,
+                    )
+
+                kwargs = extract_kwargs(
+                    method,
+                    available_kwargs,
+                    callback.get("defaults", {}),
+                )
+
+                result = method(**kwargs)
+
+                if callback.get("return_value"):
+                    results[method.__name__].append(result)
+
             except Exception as e:
                 if not fail_silently:
                     raise URLTokenizerError(
                         ErrorCode.callback_execution_error,
                         context={"exception": e},
-                        callback=method_name,
+                        callback=method.__name__ if method else None,
                     ) from e
 
-                continue
-
-            if callback.get("return_value", False):
-                callbacks_returns[method_name].append(callback_return)
-
-        return callbacks_returns
+        return results
 
 
 # A singleton instance to use by default
