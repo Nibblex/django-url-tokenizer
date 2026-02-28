@@ -16,7 +16,7 @@ from django.utils.module_loading import import_string
 from .exceptions import ErrorCode, URLTokenizerError
 from .models import Log
 from .utils import _from_config, _parse_preconditions, encode
-from .callbacks import BUILTIN_CALLBACKS
+from .builtin_callbacks import BUILTIN_CALLBACKS
 
 
 class TokenGenerator:
