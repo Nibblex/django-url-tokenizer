@@ -3,6 +3,7 @@ import inspect
 from collections import defaultdict
 from collections.abc import Iterable
 from datetime import datetime
+from functools import partial
 from typing import Any
 
 from django.conf import settings
@@ -209,7 +210,7 @@ class TokenGenerator:
                 return import_string(callback["path"])
 
             if callback.get("lambda"):
-                return callback["lambda"]
+                return partial(callback["lambda"], user)
 
             raise URLTokenizerError(ErrorCode.callback_configuration_error)
 
@@ -227,9 +228,6 @@ class TokenGenerator:
                 selected = {}
 
             final_kwargs = {**selected, **defaults}
-
-            if "<lambda>" == getattr(method, "__name__", ""):
-                final_kwargs["user"] = user
 
             return final_kwargs
 
