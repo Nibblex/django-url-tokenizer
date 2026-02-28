@@ -3,7 +3,7 @@ import inspect
 from collections import defaultdict
 from collections.abc import Iterable
 from datetime import datetime
-from functools import partial
+from functools import partial, wraps
 from typing import Any
 
 from django.conf import settings
@@ -16,6 +16,7 @@ from django.utils.module_loading import import_string
 from .exceptions import ErrorCode, URLTokenizerError
 from .models import Log
 from .utils import _from_config, _parse_preconditions, encode
+from .callbacks import BUILTIN_CALLBACKS
 
 
 class TokenGenerator:
@@ -211,6 +212,21 @@ class TokenGenerator:
 
             if callback.get("lambda"):
                 return partial(callback["lambda"], user)
+
+            if callback.get("builtin"):
+                builtin_name = callback["builtin"]
+                func = BUILTIN_CALLBACKS.get(builtin_name)
+                if func is None:
+                    raise URLTokenizerError(
+                        ErrorCode.invalid_builtin_callback,
+                        builtin_name=builtin_name,
+                    )
+
+                @wraps(func)
+                def builtin_wrapper(**kwargs):
+                    return func(user, **kwargs)
+
+                return builtin_wrapper
 
             raise URLTokenizerError(ErrorCode.callback_configuration_error)
 
