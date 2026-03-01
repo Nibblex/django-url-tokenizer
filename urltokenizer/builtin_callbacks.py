@@ -1,6 +1,5 @@
 from django.utils.module_loading import import_string
 
-from .exceptions import ErrorCode, URLTokenizerError
 from .utils import SETTINGS
 
 
@@ -19,14 +18,7 @@ def serialize_user(user, user_serializer=None):
     if isinstance(serializer_class, str):
         serializer_class = import_string(serializer_class)
 
-    try:
-        return serializer_class(user).data
-    except Exception as e:
-        raise URLTokenizerError(
-            ErrorCode.builtin_callback_serializer_error,
-            context={"exception": e},
-            serializer=getattr(serializer_class, "__name__", str(serializer_class)),
-        ) from e
+    return serializer_class(user).data
 
 
 # Registry mapping built-in callback names to their implementations.

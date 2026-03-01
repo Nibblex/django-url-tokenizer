@@ -17,9 +17,6 @@ class ErrorCode(Enum):
         "Error during check precondition '{pred}' execution"
     )
     user_serializer_error = _("'is_valid' method from {serializer} returned False")
-    builtin_callback_serializer_error = _(
-        "Error serializing user with '{serializer}'"
-    )
     callback_configuration_error = _(
         "Callback must include one of following keys: 'method', 'path', 'lambda' or 'builtin'"
     )
