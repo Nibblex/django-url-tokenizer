@@ -3,7 +3,7 @@ import inspect
 from collections import defaultdict
 from collections.abc import Iterable
 from datetime import datetime
-from functools import partial
+from functools import partial, wraps
 from typing import Any
 
 from django.conf import settings
@@ -13,6 +13,7 @@ from django.utils.encoding import force_bytes
 from django.utils.http import base36_to_int, int_to_base36
 from django.utils.module_loading import import_string
 
+from .builtin_callbacks import BUILTIN_CALLBACKS
 from .exceptions import ErrorCode, URLTokenizerError
 from .models import Log
 from .utils import _from_config, _parse_preconditions, encode
@@ -121,8 +122,8 @@ class TokenGenerator:
     def _update_user_data(
         self, user: object, user_data: dict[str, Any], fail_silently: bool = False
     ):
-        user_serializer = import_string(self.user_serializer)
-        serializer = user_serializer(user, data=user_data, partial=True)
+        user_serializer_class = import_string(self.user_serializer)
+        serializer = user_serializer_class(user, data=user_data, partial=True)
 
         try:
             serializer.is_valid(raise_exception=True)
@@ -211,6 +212,21 @@ class TokenGenerator:
 
             if callback.get("lambda"):
                 return partial(callback["lambda"], user)
+
+            if callback.get("builtin"):
+                builtin_name = callback["builtin"]
+                func = BUILTIN_CALLBACKS.get(builtin_name)
+                if func is None:
+                    raise URLTokenizerError(
+                        ErrorCode.invalid_builtin_callback,
+                        builtin_name=builtin_name,
+                    )
+
+                @wraps(func)
+                def builtin_wrapper(**kwargs):
+                    return func(user, **kwargs)
+
+                return builtin_wrapper
 
             raise URLTokenizerError(ErrorCode.callback_configuration_error)
 
