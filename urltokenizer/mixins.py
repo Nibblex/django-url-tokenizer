@@ -66,7 +66,7 @@ class URLTokenizerMixin:
         tokenizer = URLTokenizer(token_type)
         uidb64 = encode(getattr(self, tokenizer.encoding_field))
 
-        user, log = tokenizer.check_token(uidb64, token, fail_silently)
+        user, log = tokenizer.check_token(uidb64, token, fail_silently=fail_silently)
         if user is None:
             return False, log, {}
 
