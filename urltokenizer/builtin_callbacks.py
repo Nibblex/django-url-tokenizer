@@ -23,7 +23,7 @@ def serialize_user(user: object, **kwargs) -> dict[str, Any] | None:
     return serializer_class(user).data
 
 
-def patch_user(user: object, **kwargs) -> dict[str, Any] | None:
+def patch_user(user: object, data: dict[str, Any], **kwargs) -> dict[str, Any] | None:
     """
     Built-in callback that updates the user using the configured USER_SERIALIZER.
 
@@ -38,7 +38,6 @@ def patch_user(user: object, **kwargs) -> dict[str, Any] | None:
 
     serializer_class = import_string(user_serializer)
 
-    data = kwargs.get("data", {})
     serializer = serializer_class(user, data=data, partial=True)
     serializer.is_valid(raise_exception=True)
     serializer.save()
