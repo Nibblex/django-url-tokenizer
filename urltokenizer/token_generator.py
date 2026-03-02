@@ -122,9 +122,7 @@ class TokenGenerator:
     def _update_user_data(
         self, user: object, user_data: dict[str, Any], fail_silently: bool = False
     ):
-        user_serializer_class = (
-            import_string(self.user_serializer) if self.user_serializer else None
-        )
+        user_serializer_class = import_string(self.user_serializer)
         serializer = user_serializer_class(user, data=user_data, partial=True)
 
         try:
