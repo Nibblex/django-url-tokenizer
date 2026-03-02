@@ -56,7 +56,7 @@ class URLTokenizer:
         self._token_generator = TokenGenerator(token_config)
         # extra token types
         extra_token_types = _from_config(token_config, "extra_token_types", [])
-        extra_token_types = [self._parse_token_type(t) for t in self.extra_token_types]
+        extra_token_types = [self._parse_token_type(t) for t in extra_token_types]
         extra_token_configs = {
             t: self._get_token_config(SETTINGS, t) for t in extra_token_types
         }
