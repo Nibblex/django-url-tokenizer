@@ -58,7 +58,6 @@ class URLTokenizerMixin:
         self,
         token_type: str | Enum | None = None,
         token: str | None = None,
-        user_data: dict[str, Any] | None = None,
         callback_kwargs: Iterable[dict[str, Any]] | None = None,
         fail_silently: bool | None = None,
     ) -> tuple[bool, Log | None, dict[str, list[Any]]]:
@@ -67,7 +66,7 @@ class URLTokenizerMixin:
         tokenizer = URLTokenizer(token_type)
         uidb64 = encode(getattr(self, tokenizer.encoding_field))
 
-        user, log = tokenizer.check_token(uidb64, token, user_data, fail_silently)
+        user, log = tokenizer.check_token(uidb64, token, fail_silently)
         if user is None:
             return False, log, {}
 

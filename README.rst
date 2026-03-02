@@ -240,9 +240,6 @@ Full reference of per-type keys (all optional):
    * - ``check_logs``
      - ``False``
      - When ``True``, a token can only be used **once** (requires ``logging_enabled``).
-   * - ``user_serializer``
-     - ``None``
-     - Dotted path to a DRF serializer class used to update the user during ``check_token``.
    * - ``callbacks``
      - ``[]``
      - List of callback descriptors executed after a successful ``check_token``. See `Callbacks`_.
@@ -396,9 +393,6 @@ The ``URLTokenizer`` class is the primary entry point::
     if user:
         print("Token is valid for", user)
 
-    # Update user data during check (requires user_serializer in config)
-    user, log = tokenizer.check_token(uidb64, key, user_data={"is_active": True})
-
     # Run callbacks separately (or after a successful check)
     results = tokenizer.run_callbacks(user)
 
@@ -458,7 +452,6 @@ Then in your views or services::
     valid, log, callbacks_returns = user.check_token(
         token_type="email_verification",
         token=key,
-        user_data={"email_verified": True},
     )
 
 URLTokenizerManager / QuerySet
@@ -518,7 +511,6 @@ views as context providers.
         {
             "uidb64": "MTM",
             "token": "abc123-def456",
-            "user_data": {"is_active": true},
             "callbacks_kwargs": [{"data": {"email_verified": true}}]
         }
 
@@ -905,8 +897,6 @@ Available error codes:
      - An exception occurred while evaluating a send precondition.
    * - ``check_precondition_execution_error``
      - An exception occurred while evaluating a check precondition.
-   * - ``user_serializer_error``
-     - The user serializer's ``is_valid()`` returned ``False``.
    * - ``callback_configuration_error``
      - A callback dict is missing its resolver key.
    * - ``invalid_builtin_callback``
