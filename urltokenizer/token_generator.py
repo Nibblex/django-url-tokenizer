@@ -13,10 +13,10 @@ from django.utils.encoding import force_bytes
 from django.utils.http import base36_to_int, int_to_base36
 from django.utils.module_loading import import_string
 
+from .builtin_callbacks import BUILTIN_CALLBACKS
 from .exceptions import ErrorCode, URLTokenizerError
 from .models import Log
 from .utils import _from_config, _parse_preconditions, encode
-from .builtin_callbacks import BUILTIN_CALLBACKS
 
 
 class TokenGenerator:
@@ -55,6 +55,9 @@ class TokenGenerator:
         )
         self.check_logs = _from_config(token_config, "check_logs", False)
         self.user_serializer = _from_config(token_config, "user_serializer", None)
+        self.user_serializer_class = (
+            import_string(self.user_serializer) if self.user_serializer else None
+        )
         self.callbacks = _from_config(token_config, "callbacks", [])
 
     @staticmethod
@@ -122,8 +125,7 @@ class TokenGenerator:
     def _update_user_data(
         self, user: object, user_data: dict[str, Any], fail_silently: bool = False
     ):
-        user_serializer = import_string(self.user_serializer)
-        serializer = user_serializer(user, data=user_data, partial=True)
+        serializer = self.user_serializer_class(user, data=user_data, partial=True)
 
         try:
             serializer.is_valid(raise_exception=True)
@@ -186,7 +188,7 @@ class TokenGenerator:
             log._check()
 
         # update user data
-        if user_data and self.user_serializer:
+        if user_data and self.user_serializer_class:
             self._update_user_data(user, user_data, fail_silently)
 
         return True, log

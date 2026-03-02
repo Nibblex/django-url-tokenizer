@@ -1,9 +1,11 @@
+from typing import Any
+
 from django.utils.module_loading import import_string
 
 from .utils import SETTINGS
 
 
-def serialize_user(user, user_serializer=None):
+def serialize_user(user: object, **kwargs) -> dict[str, Any] | None:
     """
     Built-in callback that serializes the user using the configured USER_SERIALIZER.
 
@@ -11,14 +13,37 @@ def serialize_user(user, user_serializer=None):
     then falls back to the ``USER_SERIALIZER`` key in ``URL_TOKENIZER_SETTINGS``.
     Returns ``None`` when no serializer class is configured.
     """
-    serializer_class = user_serializer or SETTINGS.get("USER_SERIALIZER")
-    if not serializer_class:
+
+    user_serializer = SETTINGS.get("USER_SERIALIZER")
+    if user_serializer is None:
         return None
 
-    if isinstance(serializer_class, str):
-        serializer_class = import_string(serializer_class)
+    serializer_class = import_string(user_serializer)
 
     return serializer_class(user).data
+
+
+def patch_user(user: object, **kwargs) -> dict[str, Any] | None:
+    """
+    Built-in callback that updates the user using the configured USER_SERIALIZER.
+
+    The serializer class is resolved from the ``user_serializer`` argument first,
+    then falls back to the ``USER_SERIALIZER`` key in ``URL_TOKENIZER_SETTINGS``.
+    Returns ``None`` when no serializer class is configured.
+    """
+
+    user_serializer = SETTINGS.get("USER_SERIALIZER")
+    if user_serializer is None:
+        return None
+
+    serializer_class = import_string(user_serializer)
+
+    data = kwargs.get("data", {})
+    serializer = serializer_class(user, data=data, partial=True)
+    serializer.is_valid(raise_exception=True)
+    serializer.save()
+
+    return serializer.data
 
 
 # Registry mapping built-in callback names to their implementations.
@@ -26,4 +51,5 @@ def serialize_user(user, user_serializer=None):
 # ``builtin`` key in the callback configuration.
 BUILTIN_CALLBACKS = {
     "serialize_user": serialize_user,
+    "patch_user": patch_user,
 }
