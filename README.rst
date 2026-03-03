@@ -710,7 +710,11 @@ Built-in Callbacks
 
 Serializes the user object using the serializer class configured under
 ``USER_SERIALIZER`` in ``URL_TOKENIZER_SETTINGS``. Returns a dict of the user's
-serialized data, or ``None`` when no serializer is configured::
+serialized data, or ``None`` when no serializer is configured.
+
+Accepts an optional ``related_serializers`` keyword argument — a dict mapping
+user field names to dotted serializer paths. When provided, each related object
+is serialized with its own serializer and merged into the result::
 
     URL_TOKENIZER_SETTINGS = {
         "USER_SERIALIZER": "myapp.serializers.UserSerializer",
@@ -725,13 +729,27 @@ serialized data, or ``None`` when no serializer is configured::
 
     user, log = tokenizer.check_token(uidb64, key)
     results = tokenizer.run_callbacks(user)
-    user_data = results["serialize_user"][0]
+    serialized = results["serialize_user"][0]
+
+With ``related_serializers``::
+
+    results = tokenizer.run_callbacks(
+        user,
+        callback_kwargs=[
+            {
+                "related_serializers": {
+                    "profile": "myapp.serializers.ProfileSerializer",
+                },
+            },
+        ],
+    )
 
 ``patch_user``
 ~~~~~~~~~~~~~~
 
 Partially updates the user using the configured ``USER_SERIALIZER``. Accepts a
-``data`` keyword argument::
+``data`` keyword argument with the fields to update. Returns ``None`` when no
+serializer is configured or ``data`` is not provided::
 
     URL_TOKENIZER_SETTINGS = {
         "USER_SERIALIZER": "myapp.serializers.UserSerializer",
