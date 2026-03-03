@@ -362,7 +362,6 @@ class URLTokenizer:
         self,
         uidb64: str,
         token: str,
-        user_data: dict[str, Any] | None = None,
         fail_silently: bool | None = None,
     ) -> tuple[object | None, Log | None]:
         if fail_silently is None:
@@ -383,7 +382,7 @@ class URLTokenizer:
 
         # check token
         checked, log = self._token_generator.check_token(
-            user, token, user_data=user_data, fail_silently=fail_silently
+            user, token, fail_silently=fail_silently
         )
         if not checked:
             return None, None

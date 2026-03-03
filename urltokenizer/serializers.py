@@ -145,7 +145,6 @@ class BulkSendTokenSerializer(ChannelSerializer):
 class CheckTokenSerializer(serializers.Serializer):
     uidb64 = serializers.CharField(required=True)
     token = serializers.CharField(required=True)
-    user_data = serializers.JSONField(required=False, default=dict)
     callbacks_kwargs = serializers.JSONField(required=False, write_only=True)
     callbacks_returns = serializers.JSONField(read_only=True)
     user = serializers.PrimaryKeyRelatedField(read_only=True)
@@ -167,9 +166,8 @@ class CheckTokenSerializer(serializers.Serializer):
         # check token
 
         uidb64, token = validated_data["uidb64"], validated_data["token"]
-        user_data = validated_data["user_data"]
         user, log = tokenizer.check_token(
-            uidb64, token, user_data=user_data, fail_silently=fail_silently
+            uidb64, token, fail_silently=fail_silently
         )
         if user is None:
             raise AuthenticationFailed(_("The token is invalid or has expired."))

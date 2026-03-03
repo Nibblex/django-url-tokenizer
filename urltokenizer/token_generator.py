@@ -54,7 +54,6 @@ class TokenGenerator:
             token_config, "check_preconditions"
         )
         self.check_logs = _from_config(token_config, "check_logs", False)
-        self.user_serializer = _from_config(token_config, "user_serializer", None)
         self.callbacks = _from_config(token_config, "callbacks", [])
 
     @staticmethod
@@ -119,24 +118,6 @@ class TokenGenerator:
 
         return True
 
-    def _update_user_data(
-        self, user: object, user_data: dict[str, Any], fail_silently: bool = False
-    ):
-        user_serializer_class = import_string(self.user_serializer)
-        serializer = user_serializer_class(user, data=user_data, partial=True)
-
-        try:
-            serializer.is_valid(raise_exception=True)
-        except Exception as e:
-            if not fail_silently:
-                raise URLTokenizerError(
-                    ErrorCode.user_serializer_error,
-                    serializer=self.user_serializer,
-                    context={"exception": e},
-                ) from e
-        else:
-            serializer.save()
-
     def make_token(self, user: object) -> tuple[str, datetime]:
         """
         Return a token that can be used once for the given user.
@@ -148,7 +129,6 @@ class TokenGenerator:
         self,
         user: object,
         token: str,
-        user_data: dict[str, Any] | None = None,
         fail_silently: bool = False,
     ) -> tuple[bool, Log | None]:
         """
@@ -184,10 +164,6 @@ class TokenGenerator:
                 return False, None
 
             log._check()
-
-        # update user data
-        if user_data and self.user_serializer:
-            self._update_user_data(user, user_data, fail_silently)
 
         return True, log
 

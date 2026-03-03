@@ -240,9 +240,6 @@ Full reference of per-type keys (all optional):
    * - ``check_logs``
      - ``False``
      - When ``True``, a token can only be used **once** (requires ``logging_enabled``).
-   * - ``user_serializer``
-     - ``None``
-     - Dotted path to a DRF serializer class used to update the user during ``check_token``.
    * - ``callbacks``
      - ``[]``
      - List of callback descriptors executed after a successful ``check_token``. See `Callbacks`_.
@@ -396,9 +393,6 @@ The ``URLTokenizer`` class is the primary entry point::
     if user:
         print("Token is valid for", user)
 
-    # Update user data during check (requires user_serializer in config)
-    user, log = tokenizer.check_token(uidb64, key, user_data={"is_active": True})
-
     # Run callbacks separately (or after a successful check)
     results = tokenizer.run_callbacks(user)
 
@@ -458,7 +452,6 @@ Then in your views or services::
     valid, log, callbacks_returns = user.check_token(
         token_type="email_verification",
         token=key,
-        user_data={"email_verified": True},
     )
 
 URLTokenizerManager / QuerySet
@@ -518,7 +511,6 @@ views as context providers.
         {
             "uidb64": "MTM",
             "token": "abc123-def456",
-            "user_data": {"is_active": true},
             "callbacks_kwargs": [{"data": {"email_verified": true}}]
         }
 
@@ -718,7 +710,11 @@ Built-in Callbacks
 
 Serializes the user object using the serializer class configured under
 ``USER_SERIALIZER`` in ``URL_TOKENIZER_SETTINGS``. Returns a dict of the user's
-serialized data, or ``None`` when no serializer is configured::
+serialized data, or ``None`` when no serializer is configured.
+
+Accepts an optional ``related_serializers`` keyword argument — a dict mapping
+user field names to dotted serializer paths. When provided, each related object
+is serialized with its own serializer and merged into the result::
 
     URL_TOKENIZER_SETTINGS = {
         "USER_SERIALIZER": "myapp.serializers.UserSerializer",
@@ -733,13 +729,27 @@ serialized data, or ``None`` when no serializer is configured::
 
     user, log = tokenizer.check_token(uidb64, key)
     results = tokenizer.run_callbacks(user)
-    user_data = results["serialize_user"][0]
+    serialized = results["serialize_user"][0]
+
+With ``related_serializers``::
+
+    results = tokenizer.run_callbacks(
+        user,
+        callback_kwargs=[
+            {
+                "related_serializers": {
+                    "profile": "myapp.serializers.ProfileSerializer",
+                },
+            },
+        ],
+    )
 
 ``patch_user``
 ~~~~~~~~~~~~~~
 
 Partially updates the user using the configured ``USER_SERIALIZER``. Accepts a
-``data`` keyword argument::
+``data`` keyword argument with the fields to update. Returns ``None`` when no
+serializer is configured or ``data`` is not provided::
 
     URL_TOKENIZER_SETTINGS = {
         "USER_SERIALIZER": "myapp.serializers.UserSerializer",
@@ -905,8 +915,6 @@ Available error codes:
      - An exception occurred while evaluating a send precondition.
    * - ``check_precondition_execution_error``
      - An exception occurred while evaluating a check precondition.
-   * - ``user_serializer_error``
-     - The user serializer's ``is_valid()`` returned ``False``.
    * - ``callback_configuration_error``
      - A callback dict is missing its resolver key.
    * - ``invalid_builtin_callback``
