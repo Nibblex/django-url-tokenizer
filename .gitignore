@@ -16,5 +16,8 @@
 # build folder.
 /build/
 
+# dev project folder.
+/dev_project/
+
 # Python egg metadata, regenerated from source files by setuptools.
 /*.egg-info
